@@ -18,7 +18,22 @@ functions. However, the global convergence properties of Newton's method are sti
 research. The purpose of this project is to survey and analyze various strategies to achieve global
 convergence.
 
-This sentence will be cited by the sources so i can test if bibtex is working properly \cite{hanzely2022damped} \cite{mishchenko2023regularized}
+This sentence will be cited by the sources so i can test if bibtex is working properly \cite{hanzely2022damped} 
+
+\section{Background}
+
+\subsection{Classic Newton}
+
+\subsection{Regularized Newton}
+
+In their 2023 article Michenko presents a variation of Newton's method that uses the update rule \cite{mishchenko2023regularized}:
+
+\begin{equation}
+  x^{k+1} = x^{k} - ( \nabla^2 f(x^k) + \sqrt{H||\nabla f(x^k)||\bold{I}})^{-1} \nabla f(x^k)
+  \label{eq:regularized-newton}
+\end{equation}
+
+where $H > 0$ is a constant. The convergence rate of this algorithm is $\mathcal{O}(\frac{1}{k^2})$.
 
 \bibliographystyle{unsrt}
 \bibliography{refs}
