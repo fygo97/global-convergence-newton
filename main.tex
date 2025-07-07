@@ -1,13 +1,57 @@
 \documentclass{article}
-\usepackage{graphicx} % Required for inserting images
+
+% ready for submission
+\usepackage{neurips_2022}
+
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{hyperref}       % hyperlinks
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+\usepackage{xcolor}         % colors
+
 
 \title{Global Convergence Newton}
-\author{Raffael Colonnello, Fynn Gohlke, Benedikt Heuser}
-\date{July 2025}
+
+
+% The \author macro works with any number of authors. There are two commands
+% used to separate the names and addresses of multiple authors: \And and \AND.
+%
+% Using \And between authors leaves it to LaTeX to determine where to break the
+% lines. Using \AND forces a line break at that point. So, if LaTeX puts 3 of 4
+% authors names on the first line, and the last on the second line, try using
+% \AND instead of \And before the third author name.
+
+
+\author{
+  Raffael Colonnello\\
+  University of Basel\\
+  \texttt{Raffael.Colonnello@unibas.ch} \\
+  \And
+  Fynn Gohlke\\
+  University of Basel\\
+  \texttt{Fynn.Gohlke@stud.unibas.ch} \\
+  \AND
+  Benedikt Heuser\\
+  University of Basel\\
+  \texttt{ben.heuser@unibas.ch} \\
+}
 
 \begin{document}
 
 \maketitle
+
+
+\begin{abstract}
+  The abstract paragraph should be indented \nicefrac{1}{2}~inch (3~picas) on
+  both the left- and right-hand margins. Use 10~point type, with a vertical
+  spacing (leading) of 11~points.  The word \textbf{Abstract} must be centered,
+  bold, and in point size 12. Two line spaces precede the abstract. The abstract
+  must be limited to one paragraph.
+\end{abstract}
 
 \section{Introduction}
 
@@ -22,28 +66,160 @@ This sentence will be cited by the sources so i can test if bibtex is working pr
 
 \section{Background}
 
-\subsection{Classic Newton}
+In this paper we consider the problem
+
+\begin{equation}
+  \min_{x \in \mathbb{R}^d} f(\mathbf{x})
+\end{equation}
+
+where $f: \mathbb{R}^d \rightarrow \mathbb{R}$ is a twice-differentiable function whose Hessian is $L$-Lipschitz continuous. First-order optimization methods are widely used for such problems due to their low per-iteration computational cost and their suitability for parallelization. However, in the presence of ill-conditioned objective landscapes, these methods often suffer from slow convergence.
+
+In contrast, second-order methods such as Newton's method typically exhibit much faster convergence in these settings. In particular, Newton's method enjoys local quadratic convergence under suitable regularity conditions. Nevertheless, outside the region where these conditions hold its performance may degrade to only sublinear convergence.
+
+In this paper, we explore the theoretical foundations of several Newton-type methods, focusing on line search strategies, regularization techniques, and trust region approaches.
+
+\subsection{Classic Newton's Method}
+
+The classical origin of Newton's method is as an algorithm for finding the roots of functions. In this paper it is used to find a local minimum in a function. It uses the update rule:
+
+\begin{equation}
+  \mathbf{x}_{k+1} = \mathbf{x}_k - eta (\nabla^2 f(\mathbf{x}_k))^{-1} \nabla f(\mathbf{x}_k)
+\end{equation}
+
+The inverse Hessian can be interpreted as transforming the gradient landscape to be more isotropic, thereby improving the conditioning of the problem. 
+
+\subsection{Cubic Newton}
+
+The cubic Newton method was one of the first to achieve a good complexity guarantee globally. It is based on cubic regularization. It uses the update rule:
+
+\begin{equation}
+\mathbf{x}_{k+1} = \mathbf{x}_{k} - ( \nabla^2 f(\mathbf{x}_k) + H ||\mathbf{x}_{k+1} - \mathbf{x}_{k}||\mathbf{I})^{-1} \nabla f(\mathbf{x}_k)
+\end{equation}
+
+\subsection{Levenberg and Marquardt method}
+
+The Levenberg and Marquardt method is parameterized by a sequence $\{\lambda_k\}_k^\infty$ where usually $\lambda_k \equiv \lambda > 0$. The update rule is:
+
+\begin{equation}
+\mathbf{x}_{k+1} = \mathbf{x}_{k} - ( \nabla^2 f(\mathbf{x}_k) + \lambda_k \mathbf{I})^{-1} \nabla f(\mathbf{x}_k)
+\end{equation}
 
 \subsection{Regularized Newton}
 
 In their 2023 article Michenko presents a variation of Newton's method that uses the update rule \cite{mishchenko2023regularized}:
 
 \begin{equation}
-  x^{k+1} = x^{k} - ( \nabla^2 f(x^k) + \sqrt{H||\nabla f(x^k)||\bold{I}})^{-1} \nabla f(x^k)
+\mathbf{x}_{k+1} = \mathbf{x}_{k} - ( \nabla^2 f(\mathbf{x}_k) + \sqrt{ H ||\nabla f(\mathbf{x}_k)||\mathbf{I}})^{-1} \nabla f(\mathbf{x}_k)
   \label{eq:regularized-newton}
 \end{equation}
 
-where $H > 0$ is a constant. The convergence rate of this algorithm is $\mathcal{O}(\frac{1}{k^2})$.
+where $H > 0$ is a constant. The convergence rate of this algorithm is $\mathcal{O}(\frac{1}{k^2})$. This method uses an adaptive variant of the Levenberg-Marquardt regularization. 
 
 \bibliographystyle{unsrt}
 \bibliography{refs}
 
-\begin{figure}
-  \begin{center}
-    \includegraphics[width=0.5\textwidth]{figures/cat.png}
-  \end{center}
-  \caption{}\label{fig:}
-\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section*{Checklist}
+
+
+%%% BEGIN INSTRUCTIONS %%%
+The checklist follows the references.  Please
+read the checklist guidelines carefully for information on how to answer these
+questions.  For each question, change the default \answerTODO{} to \answerYes{},
+\answerNo{}, or \answerNA{}.  You are strongly encouraged to include a {\bf
+justification to your answer}, either by referencing the appropriate section of
+your paper or providing a brief inline description.  For example:
+\begin{itemize}
+  \item Did you include the license to the code and datasets? \answerYes{See Section}
+  \item Did you include the license to the code and datasets? \answerNo{The code and the data are proprietary.}
+  \item Did you include the license to the code and datasets? \answerNA{}
+\end{itemize}
+Please do not modify the questions and only use the provided macros for your
+answers.  Note that the Checklist section does not count towards the page
+limit.  In your paper, please delete this instructions block and only keep the
+Checklist section heading above along with the questions/answers below.
+%%% END INSTRUCTIONS %%%
+
+
+\begin{enumerate}
+
+
+\item For all authors...
+\begin{enumerate}
+  \item Do the main claims made in the abstract and introduction accurately reflect the paper's contributions and scope?
+    \answerTODO{}
+  \item Did you describe the limitations of your work?
+    \answerTODO{}
+  \item Did you discuss any potential negative societal impacts of your work?
+    \answerTODO{}
+  \item Have you read the ethics review guidelines and ensured that your paper conforms to them?
+    \answerTODO{}
+\end{enumerate}
+
+
+\item If you are including theoretical results...
+\begin{enumerate}
+  \item Did you state the full set of assumptions of all theoretical results?
+    \answerTODO{}
+        \item Did you include complete proofs of all theoretical results?
+    \answerTODO{}
+\end{enumerate}
+
+
+\item If you ran experiments...
+\begin{enumerate}
+  \item Did you include the code, data, and instructions needed to reproduce the main experimental results (either in the supplemental material or as a URL)?
+    \answerTODO{}
+  \item Did you specify all the training details (e.g., data splits, hyperparameters, how they were chosen)?
+    \answerTODO{}
+        \item Did you report error bars (e.g., with respect to the random seed after running experiments multiple times)?
+    \answerTODO{}
+        \item Did you include the total amount of compute and the type of resources used (e.g., type of GPUs, internal cluster, or cloud provider)?
+    \answerTODO{}
+\end{enumerate}
+
+
+\item If you are using existing assets (e.g., code, data, models) or curating/releasing new assets...
+\begin{enumerate}
+  \item If your work uses existing assets, did you cite the creators?
+    \answerTODO{}
+  \item Did you mention the license of the assets?
+    \answerTODO{}
+  \item Did you include any new assets either in the supplemental material or as a URL?
+    \answerTODO{}
+  \item Did you discuss whether and how consent was obtained from people whose data you're using/curating?
+    \answerTODO{}
+  \item Did you discuss whether the data you are using/curating contains personally identifiable information or offensive content?
+    \answerTODO{}
+\end{enumerate}
+
+
+\item If you used crowdsourcing or conducted research with human subjects...
+\begin{enumerate}
+  \item Did you include the full text of instructions given to participants and screenshots, if applicable?
+    \answerTODO{}
+  \item Did you describe any potential participant risks, with links to Institutional Review Board (IRB) approvals, if applicable?
+    \answerTODO{}
+  \item Did you include the estimated hourly wage paid to participants and the total amount spent on participant compensation?
+    \answerTODO{}
+\end{enumerate}
+
+
+\end{enumerate}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\appendix
+
+
+\section{Appendix}
+
+
+Optionally include extra information (complete proofs, additional experiments and plots) in the appendix.
+This section will often be part of the supplemental material.
+
 
 \end{document}
-
