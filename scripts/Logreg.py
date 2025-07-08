@@ -1,6 +1,7 @@
 import copy
 import numpy as np
 from sklearn.metrics import accuracy_score
+from sklearn.preprocessing import StandardScaler
 
 class CustomLogReg():
     def __init__(self):
@@ -13,9 +14,11 @@ class CustomLogReg():
 
         self.weights = np.zeros(x.shape[1])
         self.bias = 0
+        print(f"weights shape = {self.weights.shape}")
 
         for i in range(epochs):
-            x_dot_weights = np.matmul(self.weights, x.transpose()) + self.bias
+            x_dot_weights = x @ self.weights + self.bias
+            print(x_dot_weights.shape)
             pred = self._sigmoid(x_dot_weights)
             loss = self.compute_loss(y, pred)
             error_w, error_b = self.compute_gradients(x, y, pred)

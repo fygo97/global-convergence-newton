@@ -31,9 +31,10 @@ if __name__ == '__main__':
 
     # Train model
     lr = CustomLogReg()
-    lr.fit(X_train, y_train, epochs=150)
+    lr.fit(X_train, y_train, epochs=4)
     pred = lr.predict(X_test)
     accuracy = accuracy_score(y_test, pred)
-    print(accuracy)
+    print(lr.train_accuracies)
+    print(lr.losses)
 
 
