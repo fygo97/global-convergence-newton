@@ -7,16 +7,19 @@ from sklearn.metrics import accuracy_score, classification_report, confusion_mat
 import os
 from Logreg import CustomLogReg
 import matplotlib.pyplot as plt
+from methods import Method
 
 
-def loss_plot(losses, epochs):
-    fig, ax = plt.subplots()
+def make_plots(losses, axs, row = 0):
     xs = range(len(losses))
-    ax.plot(xs, losses)
-    ax.set_xlabel("epochs")
-    ax.set_ylabel("loss")
+    axs[row, 0].plot(xs, losses)
+    axs[row, 0].set_xlabel("epochs")
+    axs[row, 0].set_ylabel("loss")
+    axs[row, 1].plot(lr.train_accuracies)
+    axs[row, 0].set_xlabel("epochs")
+    axs[row, 0].set_ylabel("accuracy")
+
     
-    plt.show()
 
 if __name__ == '__main__':
 
@@ -47,15 +50,19 @@ if __name__ == '__main__':
     y_test = np.clip(y_test, 0.0, 1.0)
 
     # Train model
-    epochs = 150
-    lr = CustomLogReg()
-    lr.fit(X_train, y_train, epochs=epochs)
+    epochs = 10
+    lr = CustomLogReg(Method.NEWTON)
+    lr.fit(X_train, y_train, epochs=epochs, lr=0.001)
     print("Training complete")
     pred = lr.predict(X_test)
     accuracy = accuracy_score(y_test, pred)
-    print(len(lr.losses))
-    loss_plot(lr.losses, epochs)
+
+    # Newton's method
+    lr_newton = CustomLogReg(Method.NEWTON)
+    # lr_newton.fit(X_train, y_train, epochs=epochs)
 
 
-
-
+    #plotting
+    fig, axs = plt.subplots(2, 2)
+    make_plots(lr.losses, axs)
+    plt.show()

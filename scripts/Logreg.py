@@ -2,29 +2,43 @@ import copy
 import numpy as np
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import StandardScaler
+from methods import Method
 
 class CustomLogReg():
-    def __init__(self):
+    def __init__(self, method):
         self.losses = []
         self.train_accuracies = []
+        self.method = method
 
-    def fit(self, x, y, epochs):
-        x = self._transform_x(x)
+    def fit(self, x, y, epochs, lr):
+        ones = np.ones(x.shape[0]).reshape((-1, 1))
+        x = np.hstack([ones, self._transform_x(x)])
         y = self._transform_y(y)
 
         self.weights = np.ones(x.shape[1])
-        self.bias = 1
 
         for i in range(epochs):
-            x_dot_weights = np.dot(x, self.weights) + self.bias
+            print(i)
+            x_dot_weights = np.dot(x, self.weights)
             pred = self._sigmoid(x_dot_weights)
             loss = self.compute_loss(y, pred)
-            error_w, error_b = self.compute_gradients(x, y, pred)
-            self.update_model_parameters(error_w, error_b)
-
+            if self.method == Method.GD:
+                self.perform_GD_update_step(x, y, pred, lr)
+            elif self.method == Method.NEWTON:
+                self.perform_Newton_update_step(x, y, pred, lr)
             pred_to_class = [1 if p > 0.5 else 0 for p in pred]
             self.train_accuracies.append(accuracy_score(y, pred_to_class))
             self.losses.append(loss)
+
+    def perform_GD_update_step(self, x, y, pred, lr):
+            error_w = self.compute_gradients(x, y, pred)
+            self.update_model_parameters(error_w, lr)
+
+    def perform_Newton_update_step(self, x, y, pred, lr):
+            error_w = self.compute_gradients(x, y, pred)
+            hessian = self.compute_hessian(x, pred)
+            H_inv = np.linalg.pinv(hessian)
+            self.weights = self.weights - lr * np.dot(H_inv, error_w)
 
     def compute_loss(self, y_true, y_pred):
         # Clamp predicted values to avoid log(0) and values outside (0,1)
@@ -38,18 +52,24 @@ class CustomLogReg():
     def compute_gradients(self, x, y_true, y_pred):
         # derivative of binary cross entropy
         difference =  y_pred - y_true
-        gradient_b = np.mean(difference)
+        # gradient_b = np.mean(difference)
         gradients_w = np.dot(x.transpose(), difference)
         gradients_w = np.array([np.mean(grad) for grad in gradients_w])
 
-        return gradients_w, gradient_b
+        return gradients_w
 
-    def update_model_parameters(self, error_w, error_b):
-        self.weights = self.weights - 0.1 * error_w
-        self.bias = self.bias - 0.1 * error_b
+    def compute_hessian(self, x, y_pred):
+        D = np.diag(y_pred * (1 - y_pred))
+        H = np.dot(np.dot(x.T, D), x)
+        return H
+
+    def update_model_parameters(self, error_w, lr):
+        self.weights = self.weights - lr * error_w
 
     def predict(self, x):
-        x_dot_weights = np.dot(x, self.weights.transpose()) + self.bias
+        ones = np.ones(x.shape[0]).reshape((-1, 1))
+        x = np.hstack([ones, x])
+        x_dot_weights = np.dot(x, self.weights.transpose())
         probabilities = self._sigmoid(x_dot_weights)
         return [1 if p > 0.5 else 0 for p in probabilities]
 
