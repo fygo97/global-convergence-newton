@@ -6,6 +6,17 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, roc_curve, auc
 import os
 from Logreg import CustomLogReg
+import matplotlib.pyplot as plt
+
+
+def loss_plot(losses, epochs):
+    fig, ax = plt.subplots()
+    xs = range(len(losses))
+    ax.plot(xs, losses)
+    ax.set_xlabel("epochs")
+    ax.set_ylabel("loss")
+    
+    plt.show()
 
 if __name__ == '__main__':
 
@@ -27,14 +38,24 @@ if __name__ == '__main__':
     X_test, y_test = load_svmlight_file("a9a.t", n_features=X_train.shape[1])
     X_train = X_train.toarray()
     X_test = X_test.toarray()
+    print("x max/min:", np.max(X_train), np.min(X_train))
+    print(type(X_test))
     print("Data sets have been loaded")
 
+    # Prepocessing
+    y_train = np.clip(y_train, 0.0, 1.0)
+    y_test = np.clip(y_test, 0.0, 1.0)
+
     # Train model
+    epochs = 150
     lr = CustomLogReg()
-    lr.fit(X_train, y_train, epochs=4)
+    lr.fit(X_train, y_train, epochs=epochs)
+    print("Training complete")
     pred = lr.predict(X_test)
     accuracy = accuracy_score(y_test, pred)
-    print(lr.train_accuracies)
-    print(lr.losses)
+    print(len(lr.losses))
+    loss_plot(lr.losses, epochs)
+
+
 
 
