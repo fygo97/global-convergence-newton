@@ -60,19 +60,15 @@ In this paper we consider problems of the
   \min_{x \in \mathbb{R}^d} f(\mathbf{x})
 \end{equation}
 
-where $f: \mathbb{R}^d \rightarrow \mathbb{R}$ is a twice-differentiable function. First-order optimization methods are widely used for such problems due to their low per-iteration computational cost and their suitability for parallelization they often suffer from slow convergence for ill-conditioned objective functions [TODO:REFERENCE].
+where $f: \mathbb{R}^d \rightarrow \mathbb{R}$ is a twice-differentiable function. First-order optimization methods are widely used for such problems due to their low per-iteration computational cost and their suitability for parallelization they often suffer from slow convergence for ill-conditioned objective functions \cite{wright}.
 Newton's method is a popular optimization algorithm that is commonly used to solve optimization
 problems. It is a second-order optimization algorithm since it uses second-order information of the
 objective function. Newton's method is known to have fast local convergence guarantees for convex
 functions. However, the global convergence properties of Newton's method are still an active area of
-research [TODO: REFERENCE]. The purpose of this project is to survey and analyze various strategies to achieve global
-convergence. In contrast to first-order methods such as gradient descent, second-order methods such as Newton's method can achieve much faster convergence when presented with ill conditioned Hessians by transferring the problem into a more isotropic optimization problem at the cost of an increase to cubic run time. Newton's method yields local quadratic convergence if $f$ is twice differentiable (or we have suitable regularity conditions), which degrades to sublinear convergence outside of the local regions.
+research \cite{mishchenko2023regularized} \cite{hanzely2022damped}. In contrast to first-order methods such as gradient descent, second-order methods such as Newton's method can achieve much faster convergence when presented with ill conditioned Hessians by transferring the problem into a more isotropic optimization problem at the cost of an increase to cubic run time. Newton's method yields local quadratic convergence if $f$ is twice differentiable (or we have suitable regularity conditions), which degrades to sublinear convergence outside of the local regions.
 
-In this paper, we explore the theoretical foundations of several Newton-type methods that achieve different global convergence guarantees, compare their performance in a classification-type problem for two Loss function on four different datasets.
-Finally we will propose two modifications of the algorithms to achieve an increase in runtime, by either coupling the Newton-type method with a conjugate gradient method for Hessian vector multiplication or Strassens algorithm for fast matrix inversion.
-
-This sentence will be cited by the sources so i can test if bibtex is working properly \cite{hanzely2022damped} 
-
+In this paper, we explore the theoretical foundations of several Newton-type methods that achieve different global convergence guarantees, compare their performance in a classification-type problem for two loss functions on four different datasets.
+Finally we will propose two modifications of the algorithms to achieve an increase in runtime, by either coupling the Newton-type method with a conjugate gradient method for Hessian vector multiplication or Strassen's algorithm for fast matrix inversion.
 \section{Background}
 \subsection{Loss function and Datasets}
 Let 
@@ -85,10 +81,10 @@ $X =
 \hdots x_n^\top \hdots
 \end{bmatrix}
 \in \mathbb{R}^{n \times d}$ \quad be the set of data for $n$ datapoints with $d$ features, i.e. $x_i \in \mathbb{R}^d$ and labels $y^\top = \begin{bmatrix} y_1,...,y_n\end{bmatrix}$\\
-For $\sigma(z) := \frac{\exp(z)}{1+\exp(z)}$ the loss functions w.r.t. weights $\omega$ is given by
+For $\sigma(x) := \frac{\exp(x)}{1+\exp(x)}$ the loss functions w.r.t. weights $\omega$ are given by
 \begin{align}
-L_1(\omega) &= -\frac{1}{n} \sum_{i=1}^{n} \Big( y_i \log \hat{y}_i + (1 - y_i) \log (1 - \hat{y}_i) \Big), \quad \hat{y}_i = \sigma(z_i^\top \omega) \\
-L_2(\omega) &= \frac{1}{n} \sum_{i=1}^{n} \log\big(1 + \exp(-y_i z_i^\top \omega)\big) + r(\omega), \quad
+L_1(\omega) &= -\frac{1}{n} \sum_{i=1}^{n} \Big( y_i \log \hat{y}_i + (1 - y_i) \log (1 - \hat{y}_i) \Big), \quad \hat{y}_i = \sigma(x_i^\top \omega) \\
+L_2(\omega) &= \frac{1}{n} \sum_{i=1}^{n} \log\big(1 + \exp(-y_i x_i^\top \omega)\big) + r(\omega), \quad
 r(\omega) = \lambda \sum_{j=1}^{d} \frac{\alpha \omega _j^2}{1 + \alpha \omega _j^2} \\
 \end{align}
 which yields the two optimization problems
@@ -118,7 +114,7 @@ Since $\log(\hat{y_i}),\log(1-\hat{y_i})$ are concave on $(0,\infty)$ it follows
 
 \subsection{Classic Newton's Method}
 
-The classical origin of Newton's method is as an algorithm for finding the roots of functions. In this paper it is used to find the roots $x^{*}$ of $\nabla (f(x)) \hspace{0.1cm} s.t.\nabla(f(x^{*})) = 0$ and $x^{*}$ a local minimum of $f$. Newton's method uses the update rule [REFERENCE]:
+The classical origin of Newton's method is as an algorithm for finding the roots of functions. In this paper it is used to find the roots $x^{*}$ of $\nabla (f(x)) \hspace{0.1cm} s.t.\nabla(f(x^{*})) = 0$ and $x^{*}$ a local minimum of $f$. Newton's method combined with a stepsize $\eta$ uses the update rule \cite{wright}:
 \begin{equation}
   \mathbf{x}_{k+1} = \mathbf{x}_k - \eta (\nabla^2 f(\mathbf{x}_k))^{-1} \nabla f(\mathbf{x}_k)
 \end{equation}
