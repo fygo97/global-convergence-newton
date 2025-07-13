@@ -3,42 +3,81 @@ import numpy as np
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import StandardScaler
 from methods import Method
+from scipy.special import expit
+from tqdm import trange
+
 
 class CustomLogReg():
+
     def __init__(self, method):
         self.losses = []
         self.train_accuracies = []
         self.method = method
 
-    def fit(self, x, y, epochs, lr):
+
+    def fit(self, x, y, epochs, lr, batch_size):
         ones = np.ones(x.shape[0]).reshape((-1, 1))
-        x = np.hstack([ones, self._transform_x(x)])
-        y = self._transform_y(y)
+        x = np.hstack([ones, x])  # Add bias column
 
-        self.weights = np.ones(x.shape[1])
+        self.weights = np.random.rand(x.shape[1])
 
-        for i in range(epochs):
-            print(i)
-            x_dot_weights = np.dot(x, self.weights)
-            pred = self._sigmoid(x_dot_weights)
-            loss = self.compute_loss(y, pred)
-            if self.method == Method.GD:
-                self.perform_GD_update_step(x, y, pred, lr)
-            elif self.method == Method.NEWTON:
-                self.perform_Newton_update_step(x, y, pred, lr)
-            pred_to_class = [1 if p > 0.5 else 0 for p in pred]
-            self.train_accuracies.append(accuracy_score(y, pred_to_class))
-            self.losses.append(loss)
+        n_samples = x.shape[0]
+
+        for epoch in trange(epochs, desc="Training Epochs"):
+            # Shuffle indices
+            indices = np.arange(n_samples)
+            np.random.shuffle(indices)
+
+            x_shuffled = x[indices]
+            y_shuffled = y[indices]
+
+            done = False
+
+            for start in range(0, n_samples, batch_size):
+                end = min(start + batch_size, n_samples)
+                x_batch = x_shuffled[start:end]
+                y_batch = y_shuffled[start:end]
+
+                x_dot_weights = np.dot(x_batch, self.weights)
+                pred = self._sigmoid(x_dot_weights)
+
+                if self.method == Method.GD:
+                    done = self.perform_GD_update_step(x_batch, y_batch, pred, lr / (epoch + 1))  # decreasing step size
+                elif self.method == Method.NEWTON:
+                    done = self.perform_Newton_update_step(x_batch, y_batch, pred, lr, 1)
+
+                if done:
+                    break
+
+            # Evaluate full-batch performance after epoch
+            pred_full = self._sigmoid(np.dot(x, self.weights))
+            pred_class = [1 if p > 0.5 else 0 for p in pred_full]
+            self.train_accuracies.append(accuracy_score(y, pred_class))
+            self.losses.append(self.compute_loss(y, pred_full))
+
+            if done:
+                break
+
 
     def perform_GD_update_step(self, x, y, pred, lr):
-            error_w = self.compute_gradients(x, y, pred)
-            self.update_model_parameters(error_w, lr)
+        error_w = self.compute_gradients(x, y, pred)
+        self.weights = self.weights - lr * error_w
+        return False
+        # print(np.linalg.norm(error_w))
 
-    def perform_Newton_update_step(self, x, y, pred, lr):
-            error_w = self.compute_gradients(x, y, pred)
-            hessian = self.compute_hessian(x, pred)
-            H_inv = np.linalg.pinv(hessian)
-            self.weights = self.weights - lr * np.dot(H_inv, error_w)
+    def perform_Newton_update_step(self, x, y, pred, lr, lbd):
+        error_w = self.compute_gradients(x, y, pred) + lbd * self.weights
+        # print(f"Gradient norm: {np.linalg.norm(error_w)}, Gradient max/min: {np.max(error_w)}/{np.min(error_w)}")
+        # print(f"Gradient: {error_w}")
+        hessian = self.compute_hessian(x, pred) + np.identity(x.shape[1]) * lbd
+        H_inv = np.linalg.inv(hessian)
+        self.weights = self.weights - lr * np.dot(H_inv, error_w)
+        if np.linalg.norm(error_w, ord=np.inf) <= 1e-7:
+            print("Abort criteria reached")
+            return True
+        else:
+            return False
+
 
     def compute_loss(self, y_true, y_pred):
         # Clamp predicted values to avoid log(0) and values outside (0,1)
@@ -47,24 +86,23 @@ class CustomLogReg():
         y_zero_loss = y_true * np.log(y_pred)
         y_one_loss = (1 - y_true) * np.log(1 - y_pred)
 
-        return -np.mean(y_zero_loss + y_one_loss)
+        print(-np.sum(y_zero_loss + y_one_loss) / y_true.shape[0])
+        return -np.sum(y_zero_loss + y_one_loss) / y_true.shape[0]
+
 
     def compute_gradients(self, x, y_true, y_pred):
         # derivative of binary cross entropy
         difference =  y_pred - y_true
         # gradient_b = np.mean(difference)
         gradients_w = np.dot(x.transpose(), difference)
-        gradients_w = np.array([np.mean(grad) for grad in gradients_w])
+        gradients_w = gradients_w / x.shape[0]
 
         return gradients_w
 
     def compute_hessian(self, x, y_pred):
         D = np.diag(y_pred * (1 - y_pred))
-        H = np.dot(np.dot(x.T, D), x)
-        return H
-
-    def update_model_parameters(self, error_w, lr):
-        self.weights = self.weights - lr * error_w
+        H = x.T @ D @ x
+        return H * (1.0 / x.shape[0])
 
     def predict(self, x):
         ones = np.ones(x.shape[0]).reshape((-1, 1))
@@ -74,20 +112,4 @@ class CustomLogReg():
         return [1 if p > 0.5 else 0 for p in probabilities]
 
     def _sigmoid(self, x):
-        return np.array([self._sigmoid_function(value) for value in x])
-
-    def _sigmoid_function(self, x):
-        if x >= 0:
-            z = np.exp(-x)
-            return 1 / (1 + z)
-        else:
-            z = np.exp(x)
-            return z / (1 + z)
-
-    def _transform_x(self, x):
-        # x = copy.deepcopy(x)
-        return x
-
-    def _transform_y(self, y):
-        y = copy.deepcopy(y)
-        return y
+        return expit(x)
