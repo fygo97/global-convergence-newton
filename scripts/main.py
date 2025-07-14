@@ -8,18 +8,18 @@ from sklearn.model_selection import train_test_split
 import os
 from logreg import CustomLogReg
 import matplotlib.pyplot as plt
-from methods import LossFunction, Method
+from methods import LossFunction, Method, DataSet
+import argparse
 
-DATASET = "ijcnn1"
+DATASET = DataSet.A9A
 
-def make_plots(losses, accuracies, axs, row = 0):
-    xs = range(len(losses))
-    axs[row, 0].plot(losses)
-    axs[row, 0].set_xlabel("epochs")
-    axs[row, 0].set_ylabel("loss")
-    axs[row, 1].plot(accuracies)
-    axs[row, 1].set_xlabel("epochs")
-    axs[row, 1].set_ylabel("accuracy")
+def make_plots(losses, accuracies, axs, row = 0): 
+    axs[0].plot(losses)
+    axs[0].set_xlabel("epochs")
+    axs[0].set_ylabel("loss")
+    axs[1].plot(accuracies)
+    axs[1].set_xlabel("epochs")
+    axs[1].set_ylabel("accuracy")
 
 
 def download_and_preprocess_a9a():
@@ -108,6 +108,15 @@ def download_and_preprocess_mnist():
 
 if __name__ == '__main__':
 
+    # Argparse 
+    parser = argparse.ArgumentParser(description="Select dataset to use.")
+    parser.add_argument("dataset", type=str, choices=["a9a", "covtype", "ijcnn1", "mnist"],
+                        help="Dataset to use (a9a, covtype, ijcnn1, mnist)")
+    parser.add_argument("loss", type=str, choices=["ce", "ncce"], 
+                        help="Loss function to use (ce, ncce)")
+    args = parser.parse_args()
+    DATASET = args.dataset
+
     if DATASET == "a9a":
         X_train, y_train, X_test, y_test = download_and_preprocess_a9a()
     elif DATASET == "covtype":
@@ -116,7 +125,12 @@ if __name__ == '__main__':
         X_train, y_train, X_test, y_test = download_and_preprocess_ijcnn1()
     else:
         X_train, y_train, X_test, y_test = download_and_preprocess_mnist()
+        print(y_test)
 
+    if args.loss == "ce":
+        loss_type = LossFunction.CE
+    else:
+        loss_type = LossFunction.NCCE
 
     print(f"number of samples = {len(y_train)}")
     print("x max/min:", np.max(X_train), np.min(X_train))
@@ -127,26 +141,18 @@ if __name__ == '__main__':
     y_train = np.clip(y_train, 0.0, 1.0)
     y_test = np.clip(y_test, 0.0, 1.0)
 
-    # Gradient Descent
-    #epochs = 150
-    #lr = CustomLogReg(Method.GD)
-    # lr.fit(X_train, y_train, epochs=epochs, lr=1, batch_size=y_train.shape[0])
-    #print("Training complete")
-    #pred = lr.predict(X_test)
-    #accuracy = accuracy_score(y_test, pred)
-
     # Newton's method
     epochs = 50
-    lr2 = CustomLogReg(Method.NEWTON, loss_type=LossFunction.CE)
-    lr2.fit(X_train, y_train, epochs=epochs, lr=0.1, batch_size=2048, lbd=1e-3)
+    lr = CustomLogReg(Method.NEWTON, loss_type=loss_type)
+    lr.fit(X_train, y_train, epochs=epochs, lr=0.1, batch_size=2048, lbd=0.0)
     print("Training complete")
-    pred = lr2.predict(X_test)
+    pred = lr.predict(X_test)
     accuracy2 = accuracy_score(y_test, pred)
 
     #plotting
-    fig, axs = plt.subplots(2, 2)
+    fig, axs = plt.subplots(1, 2)
     #make_plots(lr.losses, lr.train_accuracies, axs, row=0)
-    make_plots(lr2.losses, lr2.train_accuracies, axs, row=1)
+    make_plots(lr.losses, lr.train_accuracies, axs, row=0)
     #print(f"test accuracy GD: {accuracy}")
     print(f"test accuracy Newton: {accuracy2}")
     plt.show()

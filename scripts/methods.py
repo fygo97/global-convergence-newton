@@ -8,3 +8,9 @@ class Method(Enum):
 class LossFunction(Enum):
     CE = 1
     NCCE = 2
+
+class DataSet(Enum):
+    A9A = "a9a"
+    COVTYPE = "covtype"
+    MNIST = "mnist"
+    IJCNN1 = "ijcnn1"
