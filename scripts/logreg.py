@@ -92,3 +92,91 @@ class CustomLogReg():
         x_dot_weights = np.dot(x, self.weights.transpose())
         probabilities = expit(x_dot_weights)
         return [1 if p > 0.5 else 0 for p in probabilities]
+
+
+
+class MultivarLogReg():
+
+    def __init__(self, method, loss_type = LossFunction.CE, num_classes = 10):
+        self.losses = []
+        self.train_accuracies = []
+        self.method = method
+        self.loss_type = loss_type
+        self.loss_function = None
+        self.num_classes = num_classes
+
+
+    def fit(self, x, y, epochs, lr = 0.1, batch_size = 2048, lbd = 1e-7, alpha = 0.5, mu=0.1):
+        ones = np.ones(x.shape[0]).reshape((-1, 1))
+        x = np.hstack([ones, x])  # Add bias column
+
+        self.classes_ = np.unique(y)
+        num_classes = len(self.classes_)
+        self.weights = np.random.rand(num_classes, x.shape[1]) * 0.1
+
+        n_samples = x.shape[0]
+
+        if self.loss_type == LossFunction.CE:
+            self.loss_function = CELoss()
+        else:
+            self.loss_function = NCCELoss(lambda_=mu,alpha=alpha)
+
+
+        for class_idx, cls in enumerate(self.classes_):
+            binary_y = (y == cls).astype(float)
+            weights = np.random.rand(x.shape[1]) * 0.1
+
+            for epoch in trange(epochs, desc="Training Epochs"):
+                # Shuffle indices
+                indices = np.arange(n_samples)
+                np.random.shuffle(indices)
+
+                x_shuffled = x[indices]
+                y_shuffled = binary_y[indices]
+
+                done = False
+
+                for start in range(0, n_samples, batch_size):
+                    end = min(start + batch_size, n_samples)
+                    x_batch = x_shuffled[start:end]
+                    y_batch = y_shuffled[start:end]
+
+                    if self.method == Method.GD:
+                        weights = self.perform_GD_update_step(weights, x_batch, y_batch, lr / (epoch + 1))  # decreasing step size
+                    elif self.method == Method.NEWTON:
+                        weights = self.perform_Newton_update_step(weights, x_batch, y_batch, lr, lbd=lbd)
+                    if done:
+                        break
+
+                # Evaluate full-batch performance after epoch
+                pred_class = self.predict(x)
+                self.train_accuracies.append(accuracy_score(y, pred_class))
+                self.losses.append(self.loss_function.loss(weights, x, y))
+
+                if done:
+                    break
+
+            self.weights[class_idx] = weights
+
+
+    def perform_GD_update_step(self, weights, x, y, lr):
+        assert(self.loss_function != None)
+        error_w = self.loss_function.grad(weights, x, y)
+        weights = weights - lr * error_w
+        return weights
+
+
+    def perform_Newton_update_step(self, weights, x, y, lr, lbd):
+        assert(self.loss_function != None)
+        error_w = self.loss_function.grad(weights, x, y) + lbd * weights
+        hessian = self.loss_function.hessian(weights, x, y) + np.identity(x.shape[1]) * lbd
+        H_inv = np.linalg.inv(hessian)
+        weights = weights - lr * np.matmul(H_inv, error_w)
+        return weights
+
+
+    def predict(self, x):
+        logits = np.matmul(x, self.weights.T)        # shape: (n_samples, num_classes)
+        probs = expit(logits)
+        return self.classes_[np.argmax(probs, axis=1)]
+

@@ -6,7 +6,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, roc_curve, auc
 from sklearn.model_selection import train_test_split
 import os
-from logreg import CustomLogReg
+from logreg import CustomLogReg, MultivarLogReg
 import matplotlib.pyplot as plt
 from methods import LossFunction, Method, DataSet
 import argparse
@@ -63,12 +63,12 @@ def download_and_preprocess_covtype():
 
     # Load data
     X_train, y_train = load_svmlight_file("covtype")
-
-    X_train = X_train.toarray().astype(np.float32)
-    y_train = y_train.astype(np.float32)
-
     X_train, X_test, y_train, y_test = train_test_split(X_train, y_train, test_size=0.25)
-    X_test = np.array(X_test, dtype=np.float32)
+
+    X_train = np.array(X_train).astype(np.float32)
+    X_test = np.array(X_test).astype(np.float32)
+    y_train = np.array(y_train).astype(np.float32)
+    y_test = np.array(y_test).astype(np.float32)
 
     return X_train, y_train, X_test, y_test
 
@@ -82,10 +82,12 @@ def download_and_preprocess_ijcnn1():
 
     # Load data
     X_train, y_train = load_svmlight_file("ijcnn1")
-    X_train = X_train.toarray()
     X_train, X_test, y_train, y_test = train_test_split(X_train, y_train, test_size=0.25)
-    X_test = np.array(X_test)
 
+    X_train = np.array(X_train).astype(np.float32)
+    X_test = np.array(X_test).astype(np.float32)
+    y_train = np.array(y_train).astype(np.float32)
+    y_test = np.array(y_test).astype(np.float32)
     return X_train, y_train, X_test, y_test
 
 def download_and_preprocess_mnist():
@@ -97,12 +99,13 @@ def download_and_preprocess_mnist():
 
     # Load data
     X_train, y_train = load_svmlight_file("mnist.scale")
-    X_test, y_test = load_svmlight_file("mnist.scale.t")
+    X_train = X_train.toarray()
+    X_train, X_test, y_train, y_test = train_test_split(X_train, y_train, test_size=0.25)
 
-    X_train = X_train.toarray().astype(np.float32)
-    X_test = X_test.toarray().astype(np.float32)
-    y_train = y_train.astype(np.float32)
-    y_test = y_test.astype(np.float32)
+    X_train = np.array(X_train).astype(np.float32)
+    X_test = np.array(X_test).astype(np.float32)
+    y_train = np.array(y_train).astype(np.float32)
+    y_test = np.array(y_test).astype(np.float32)
 
     return X_train, y_train, X_test, y_test
 
@@ -137,19 +140,26 @@ if __name__ == '__main__':
     print(type(X_test))
     print("Data sets have been loaded")
 
-    # Prepocessing
-    y_train = np.clip(y_train, 0.0, 1.0)
-    y_test = np.clip(y_test, 0.0, 1.0)
+    # Training
+    if DATASET != "mnist":
+        y_train = np.clip(y_train, 0.0, 1.0)
+        y_test = np.clip(y_test, 0.0, 1.0)
+        lr = CustomLogReg(Method.NEWTON, loss_type=loss_type)
+    else:
+        lr = MultivarLogReg(Method.NEWTON, loss_type=loss_type)
 
-    # Newton's method
-    epochs = 50
-    lr = CustomLogReg(Method.NEWTON, loss_type=loss_type)
+    epochs = 6
     lr.fit(X_train, y_train, epochs=epochs, lr=0.1, batch_size=2048, lbd=0.0)
     print("Training complete")
+
+    ones = np.ones(X_test.shape[0]).reshape((-1, 1))
+    X_test = np.hstack([ones, X_test])
+    print(X_train.shape)
+    print(X_test.shape)
     pred = lr.predict(X_test)
     accuracy2 = accuracy_score(y_test, pred)
 
-    #plotting
+    # Plotting
     fig, axs = plt.subplots(1, 2)
     #make_plots(lr.losses, lr.train_accuracies, axs, row=0)
     make_plots(lr.losses, lr.train_accuracies, axs, row=0)
