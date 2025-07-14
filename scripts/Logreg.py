@@ -5,24 +5,31 @@ from sklearn.preprocessing import StandardScaler
 from methods import Method, LossFunction
 from scipy.special import expit
 from tqdm import trange
+from loss_functions import CELoss, NCCELoss
 
 
 class CustomLogReg():
 
-    def __init__(self, method, loss_function = LossFunction.CE):
+    def __init__(self, method, loss_type = LossFunction.CE):
         self.losses = []
         self.train_accuracies = []
         self.method = method
-        self.loss_function = loss_function
+        self.loss_type = loss_type
+        self.loss_function = None
 
 
-    def fit(self, x, y, epochs, lr, batch_size, lbd = 1e-7):
+    def fit(self, x, y, epochs, lr = 0.1, batch_size = 2048, lbd = 1e-7, alpha = 0.5, mu=0.1):
         ones = np.ones(x.shape[0]).reshape((-1, 1))
         x = np.hstack([ones, x])  # Add bias column
 
         self.weights = np.random.rand(x.shape[1]) * 0.1
 
         n_samples = x.shape[0]
+
+        if self.loss_type == LossFunction.CE:
+            self.loss_function = CELoss()
+        else:
+            self.loss_function = NCCELoss(lambda_=mu,alpha=alpha)
 
         for epoch in trange(epochs, desc="Training Epochs"):
             # Shuffle indices
@@ -46,7 +53,6 @@ class CustomLogReg():
                     done = self.perform_GD_update_step(x_batch, y_batch, pred, lr / (epoch + 1))  # decreasing step size
                 elif self.method == Method.NEWTON:
                     done = self.perform_Newton_update_step(x_batch, y_batch, pred, lr, lbd=lbd)
-
                 if done:
                     break
 
@@ -68,8 +74,6 @@ class CustomLogReg():
 
     def perform_Newton_update_step(self, x, y, pred, lr, lbd):
         error_w = self.compute_gradients(x, y, pred) + lbd * self.weights
-        # print(f"Gradient norm: {np.linalg.norm(error_w)}, Gradient max/min: {np.max(error_w)}/{np.min(error_w)}")
-        # print(f"Gradient: {error_w}")
         hessian = self.compute_hessian(x, pred) + np.identity(x.shape[1]) * lbd
         H_inv = np.linalg.inv(hessian)
         self.weights = self.weights - lr * np.dot(H_inv, error_w)
@@ -105,7 +109,6 @@ class CustomLogReg():
         if self.loss_function == LossFunction.NCCE:
             reg = mu * np.sum( (2 * alpha * self.weights) / (1 + alpha * self.weights**2)**2)
             gradients_w = gradients_w + reg
-
 
         return gradients_w
 

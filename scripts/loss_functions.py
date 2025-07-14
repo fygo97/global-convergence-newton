@@ -1,75 +1,48 @@
 import numpy as np
+from scipy.special import expit
 
-class CrossEntropyLoss:
-    def __init__(self, X, y):
-        self.X = X
-        self.y = y
-
-    def sigmoid(self, x):
-        if np.isscalar(x):
-            if x >= 0:
-                z = np.exp(-x)
-                return 1 / (1 + z)
-            else:
-                z = np.exp(x)
-                return z / (1 + z)
-        else:
-            return np.where(x >= 0, 1 / (1 + np.exp(-x)), np.exp(x) / (1 + np.exp(x)))
-
-    def value(self, omega):
-        probs = self.sigmoid(self.X @ omega)
-        loss = -np.mean(self.y * np.log(probs + 1e-12) + (1 - self.y) * np.log(1 - probs + 1e-12))
+class CELoss:
+    def loss(self, weights, x, y):
+        probs = expit(x @ weights)
+        loss = -np.mean(y * np.log(probs + 1e-12) + (1 - y) * np.log(1 - probs + 1e-12))
         return loss
 
-    def grad(self, omega):
-        probs = self.sigmoid(self.X @ omega)
-        grad = (self.X.T @ (probs - self.y)) / len(self.y)
+    def grad(self, weights, x, y):
+        probs = expit(x @ weights)
+        grad = (x.T @ (probs - y)) / len(y)
         return grad
 
-    def hessian(self, omega):
-        probs = self.sigmoid(self.X @ omega)
+    def hessian(self, weights, x, y):
+        probs = expit(x @ weights)
         D_diag = probs * (1 - probs)
         D = np.diag(D_diag)
-        hess = (self.X.T @ D @ self.X) / len(self.y)
+        hess = (x.T @ D @ x) / len(y)
         return hess
 
-class LogisticRegularizedLoss:
-    def __init__(self, X, y, lambda_, alpha):
-        self.X = X
-        self.y = y
+class NCCELoss:
+    def __init__(self, lambda_, alpha):
         self.lambda_ = lambda_
         self.alpha = alpha
 
-    def sigmoid(self, x):
-        if np.isscalar(x):
-            if x >= 0:
-                z = np.exp(-x)
-                return 1 / (1 + z)
-            else:
-                z = np.exp(x)
-                return z / (1 + z)
-        else:
-            return np.where(x >= 0, 1 / (1 + np.exp(-x)), np.exp(x) / (1 + np.exp(x)))
-
-    def value(self, omega):
-        z = self.X @ omega
-        f = np.mean(np.log(1 + np.exp(-self.y * z)))
-        r = self.lambda_ * np.sum(self.alpha * omega**2 / (1 + self.alpha * omega**2))
+    def loss(self, weights, x, y):
+        z = x @ weights
+        f = np.mean(np.log(1 + np.exp(-y * z)))
+        r = self.lambda_ * np.sum(self.alpha * weights**2 / (1 + self.alpha * weights**2))
         return f + r
 
-    def grad(self, omega):
-        z = self.X @ omega
-        sigma = self.sigmoid(-self.y * z)
-        f = - (self.X.T @ (self.y * sigma)) / len(self.y)
-        r = 2 * self.lambda_ * self.alpha * omega / (1 + self.alpha * omega**2)**2
+    def grad(self, weights, x, y):
+        z = x @ weights
+        sigma = expit(-y * z)
+        f = - (x.T @ (y * sigma)) / len(y)
+        r = 2 * self.lambda_ * self.alpha * weights / (1 + self.alpha * weights**2)**2
         return f + r
 
-    def hessian(self, omega):
-        z = self.X @ omega
-        sigma = self.sigmoid(-self.y * z)
+    def hessian(self, weights, x, y):
+        z = x @ weights
+        sigma = expit(-y * z)
         W_diag = sigma * (1 - sigma)
         W = np.diag(W_diag)
-        f = (self.X.T @ W @ self.X) / len(self.y)
-        r_diag = 2 * self.lambda_ * self.alpha * (1 - 3 * self.alpha * omega**2) / (1 + self.alpha * omega**2)**3
+        f = (x.T @ W @ x) / len(y)
+        r_diag = 2 * self.lambda_ * self.alpha * (1 - 3 * self.alpha * weights**2) / (1 + self.alpha * weights**2)**3
         r = np.diag(r_diag)
         return f + r

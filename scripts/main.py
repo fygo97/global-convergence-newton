@@ -8,7 +8,7 @@ from sklearn.model_selection import train_test_split
 import os
 from Logreg import CustomLogReg
 import matplotlib.pyplot as plt
-from methods import Method
+from methods import LossFunction, Method
 
 DATASET = "ijcnn1"
 
@@ -88,6 +88,23 @@ def download_and_preprocess_ijcnn1():
 
     return X_train, y_train, X_test, y_test
 
+def download_and_preprocess_mnist():
+
+    # Download data set
+    if os.path.isfile("ijcnn1") == False:
+        print("Couldn't find data sets... download ijcnn1 dataset from https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#ijcnn1")
+        raise AssertionError("No data")
+
+    # Load data
+    X_train, y_train = load_svmlight_file("mnist.scale")
+    X_test, y_test = load_svmlight_file("mnist.scale.t")
+
+    X_train = X_train.toarray().astype(np.float32)
+    X_test = X_test.toarray().astype(np.float32)
+    y_train = y_train.astype(np.float32)
+    y_test = y_test.astype(np.float32)
+
+    return X_train, y_train, X_test, y_test
 
 if __name__ == '__main__':
 
@@ -95,8 +112,10 @@ if __name__ == '__main__':
         X_train, y_train, X_test, y_test = download_and_preprocess_a9a()
     elif DATASET == "covtype":
         X_train, y_train, X_test, y_test = download_and_preprocess_covtype()
-    else:
+    elif DATASET == "ijcnn1":
         X_train, y_train, X_test, y_test = download_and_preprocess_ijcnn1()
+    else:
+        X_train, y_train, X_test, y_test = download_and_preprocess_mnist()
 
 
     print(f"number of samples = {len(y_train)}")
@@ -118,7 +137,7 @@ if __name__ == '__main__':
 
     # Newton's method
     epochs = 50
-    lr2 = CustomLogReg(Method.NEWTON)
+    lr2 = CustomLogReg(Method.NEWTON, loss_type=LossFunction.CE)
     lr2.fit(X_train, y_train, epochs=epochs, lr=0.1, batch_size=2048, lbd=1e-3)
     print("Training complete")
     pred = lr2.predict(X_test)
