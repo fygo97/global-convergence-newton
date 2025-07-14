@@ -63,6 +63,7 @@ def download_and_preprocess_covtype():
 
     # Load data
     X_train, y_train = load_svmlight_file("covtype")
+    X_train = X_train.toarray()
     X_train, X_test, y_train, y_test = train_test_split(X_train, y_train, test_size=0.25)
 
     X_train = np.array(X_train).astype(np.float32)
@@ -82,6 +83,7 @@ def download_and_preprocess_ijcnn1():
 
     # Load data
     X_train, y_train = load_svmlight_file("ijcnn1")
+    X_train = X_train.toarray
     X_train, X_test, y_train, y_test = train_test_split(X_train, y_train, test_size=0.25)
 
     X_train = np.array(X_train).astype(np.float32)
