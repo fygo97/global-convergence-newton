@@ -2,24 +2,25 @@ import copy
 import numpy as np
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import StandardScaler
-from methods import Method
+from methods import Method, LossFunction
 from scipy.special import expit
 from tqdm import trange
 
 
 class CustomLogReg():
 
-    def __init__(self, method):
+    def __init__(self, method, loss_function = LossFunction.CE):
         self.losses = []
         self.train_accuracies = []
         self.method = method
+        self.loss_function = loss_function
 
 
-    def fit(self, x, y, epochs, lr, batch_size):
+    def fit(self, x, y, epochs, lr, batch_size, lbd = 1e-7):
         ones = np.ones(x.shape[0]).reshape((-1, 1))
         x = np.hstack([ones, x])  # Add bias column
 
-        self.weights = np.random.rand(x.shape[1])
+        self.weights = np.random.rand(x.shape[1]) * 0.1
 
         n_samples = x.shape[0]
 
@@ -44,7 +45,7 @@ class CustomLogReg():
                 if self.method == Method.GD:
                     done = self.perform_GD_update_step(x_batch, y_batch, pred, lr / (epoch + 1))  # decreasing step size
                 elif self.method == Method.NEWTON:
-                    done = self.perform_Newton_update_step(x_batch, y_batch, pred, lr, 1)
+                    done = self.perform_Newton_update_step(x_batch, y_batch, pred, lr, lbd=lbd)
 
                 if done:
                     break
@@ -72,37 +73,51 @@ class CustomLogReg():
         hessian = self.compute_hessian(x, pred) + np.identity(x.shape[1]) * lbd
         H_inv = np.linalg.inv(hessian)
         self.weights = self.weights - lr * np.dot(H_inv, error_w)
-        if np.linalg.norm(error_w, ord=np.inf) <= 1e-7:
+        if np.linalg.norm(error_w, ord=np.inf) <= 1e-9:
             print("Abort criteria reached")
             return True
         else:
             return False
 
 
-    def compute_loss(self, y_true, y_pred):
+    def compute_loss(self, y_true, y_pred, alpha = 0.5, mu = 0.01):
         # Clamp predicted values to avoid log(0) and values outside (0,1)
         y_pred = np.clip(y_pred, 1e-9, 1 - 1e-9)
 
         y_zero_loss = y_true * np.log(y_pred)
         y_one_loss = (1 - y_true) * np.log(1 - y_pred)
 
-        print(-np.sum(y_zero_loss + y_one_loss) / y_true.shape[0])
-        return -np.sum(y_zero_loss + y_one_loss) / y_true.shape[0]
+        if self.loss_function == LossFunction.CE:
+            loss = -np.sum(y_zero_loss + y_one_loss) / y_true.shape[0]
+        else:
+            reg = mu * np.sum((alpha * self.weights**2) / (1 + alpha * self.weights**2))
+            loss = (-np.sum(y_zero_loss + y_one_loss) / y_true.shape[0]) + reg
 
+        return loss
 
-    def compute_gradients(self, x, y_true, y_pred):
+    def compute_gradients(self, x, y_true, y_pred, alpha = 0.5, mu = 0.01):
         # derivative of binary cross entropy
         difference =  y_pred - y_true
-        # gradient_b = np.mean(difference)
+
         gradients_w = np.dot(x.transpose(), difference)
         gradients_w = gradients_w / x.shape[0]
 
+        if self.loss_function == LossFunction.NCCE:
+            reg = mu * np.sum( (2 * alpha * self.weights) / (1 + alpha * self.weights**2)**2)
+            gradients_w = gradients_w + reg
+
+
         return gradients_w
 
-    def compute_hessian(self, x, y_pred):
+    def compute_hessian(self, x, y_pred, alpha = 0.5, mu = 0.01):
         D = np.diag(y_pred * (1 - y_pred))
-        H = x.T @ D @ x
-        return H * (1.0 / x.shape[0])
+        H = np.dot(np.dot(x.T, D), x) * (1.0 / x.shape[0])
+
+        if self.loss_function == LossFunction.NCCE:
+            reg = mu * np.sum((2 * alpha * (1 - alpha * self.weights**2) ) / (1 + alpha * self.weights**2)**3)
+            H = H + np.diag(reg)
+
+        return H
 
     def predict(self, x):
         ones = np.ones(x.shape[0]).reshape((-1, 1))
