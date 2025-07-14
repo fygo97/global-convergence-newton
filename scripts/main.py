@@ -149,13 +149,13 @@ if __name__ == '__main__':
         lr = CustomLogReg(Method.NEWTON, loss_type=loss_type)
     else:
         lr = MultivarLogReg(Method.NEWTON, loss_type=loss_type)
+        ones = np.ones(X_test.shape[0]).reshape((-1, 1))
+        X_test = np.hstack([ones, X_test])
 
     epochs = 6
     lr.fit(X_train, y_train, epochs=epochs, lr=0.1, batch_size=2048, lbd=0.0)
     print("Training complete")
 
-    ones = np.ones(X_test.shape[0]).reshape((-1, 1))
-    X_test = np.hstack([ones, X_test])
     print(X_train.shape)
     print(X_test.shape)
     pred = lr.predict(X_test)
