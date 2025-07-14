@@ -5,8 +5,7 @@ from sklearn.preprocessing import StandardScaler
 from methods import Method, LossFunction
 from scipy.special import expit
 from tqdm import trange
-from loss_functions import CELoss, NCCELoss
-from scripts import loss_functions
+from loss import CELoss, NCCELoss
 
 
 class CustomLogReg():
