@@ -6,7 +6,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, roc_curve, auc
 from sklearn.model_selection import train_test_split
 import os
-from logreg import CustomLogReg, MultivarLogReg
+from logreg import MultivarLogReg
 import matplotlib.pyplot as plt
 from methods import LossFunction, Method, DataSet
 import argparse
@@ -14,15 +14,17 @@ import argparse
 DATASET = DataSet.A9A
 
 def make_plots(losses, accuracies, axs, row=0): 
-    for loss in losses:
-        axs[0].plot(loss)
+    for i, loss in enumerate(losses):
+        axs[0].plot(loss, label=f"{i}")
+
     axs[0].set_xlabel("epochs")
     axs[0].set_ylabel("loss")
+    axs[0].legend()
     
-    for acc in accuracies:
-        axs[1].plot(acc)
+    axs[1].plot(accuracies)
     axs[1].set_xlabel("epochs")
     axs[1].set_ylabel("accuracy")
+    axs[1].legend()
 
 
 def download_and_preprocess_a9a():
@@ -152,17 +154,13 @@ if __name__ == '__main__':
         y_test = np.clip(y_test, 0.0, 1.0)
 
     lr = MultivarLogReg(Method.M22, loss_type=loss_type)
-    ones = np.ones(X_test.shape[0]).reshape((-1, 1))
-    X_test = np.hstack([ones, X_test])
-
-    epochs = 30
+    epochs = 10
     lr.fit(X_train, y_train, epochs=epochs, lr=0.1, batch_size=2048, lbd=1e-8)
     print("Training complete")
 
-    print(X_train.shape)
-    print(X_test.shape)
     pred = lr.predict(X_test)
     accuracy2 = accuracy_score(y_test, pred)
+    print(lr.train_accuracies)
 
     # Plotting
     fig, axs = plt.subplots(1, 2)
