@@ -92,7 +92,7 @@ which yields the two optimization problems
   \min _{\omega} L_1(\omega)\\
   \min _{\omega} L_2(\omega)
 \end{align}
-Remark 1: The 0/1 loss function for logistic regression is given by
+Remark 1: The 0-1 loss function for logistic regression is given by
 \begin{align*}
   -\sum_{i=1}^N \log\left[ \mu_i^{\mathbb{I}(y_i=1)} (1-\mu_i)^{\mathbb{I}(y_i=0)} \right] 
   =  -\sum_{i=1}^N \left[ y_i \log \mu_i + (1 - y_i) \log(1-\mu_i) \right]
@@ -160,14 +160,49 @@ In their 2023 article Michenko presents a variation of Newton's method that uses
 where $H > 0$ is a constant. The convergence rate of this algorithm is $\mathcal{O}(\frac{1}{k^2})$. This method uses an adaptive variant of the Levenberg-Marquardt regularization. 
 
 \subsection{Appendix}
+Remark 2:
 \begin{align*}
-L_1(\omega) &= -\frac{1}{n} \sum_{i=1}^n \Big[y_i \log \hat{y}_i + (1 - y_i) \log (1 - \hat{y}_i)\Big] \\
-\hat{y}_i &= \sigma(x_i^\top \omega) = \frac{1}{1 + e^{-x_i^\top \omega}} \\
-\frac{\partial}{\partial \omega} \big(-y_i \log \hat{y}_i\big) &= -y_i \frac{1}{\hat{y}_i} \hat{y}_i (1 - \hat{y}_i) x_i = -y_i (1 - \hat{y}_i) x_i \\
-\frac{\partial}{\partial \omega} \big(-(1 - y_i) \log (1 - \hat{y}_i)\big) &= (1 - y_i) \frac{1}{1 - \hat{y}_i} \hat{y}_i (1 - \hat{y}_i) x_i = (1 - y_i) \hat{y}_i x_i \\
-\nabla L_1(\omega) &= \frac{1}{n} \sum_{i=1}^n \big[\hat{y}_i - y_i\big] x_i = \frac{1}{n} X^\top (\hat{y} - y)
+  \sigma(z) &= \frac{1}{1 + e^{-z}} \\
+  \implies \frac{d}{dz} \sigma(z) &= \frac{d}{dz} (1 + e^{-z})^{-1}
+  = -(1 + e^{-z})^{-2} \cdot (-e^{-z}) = \frac{e^{-z}}{(1 + e^{-z})^2}
+  = \frac{1}{1 + e^{-z}} \cdot \frac{e^{-z}}{1 + e^{-z}}
+  = \sigma(z) (1 - \sigma(z))
 \end{align*}
-TODO: Hessian von L1 ausrechnen. (Ist aber gesichert korrekt wegen IBM)
+\begin{align*}
+L_1(\omega) &= -\frac{1}{n} \sum_{i=1}^n \Big[\underbrace{y_i \log \hat{y}_i}_{=:A_i} + \underbrace{(1 - y_i) \log (1 - \hat{y}_i)}_{=:B_i}\Big] \\
+\hat{y}_i &= \sigma(x_i^\top \omega) = \frac{1}{1 + e^{-x_i^\top \omega}} \\
+\end{align*}
+and applying Remark 2 to $\hat{y}$ we get, that
+\begin{align*}
+\frac{\partial}{\partial \omega} A_i &= \frac{\partial}{\partial \omega}\big(-y_i \log \hat{y}_i\big) = -y_i \frac{1}{\hat{y}_i} \hat{y}_i (1 - \hat{y}_i) x_i = -y_i (1 - \hat{y}_i) x_i \\
+%
+\frac{\partial}{\partial \omega} B_i &=\frac{\partial}{\partial \omega} \big(-(1 - y_i) \log (1 - \hat{y}_i)\big) = (1 - y_i) \frac{1}{1 - \hat{y}_i} \hat{y}_i (1 - \hat{y}_i) x_i = (1 - y_i) \hat{y}_i x_i\\
+%
+\frac{\partial}{\partial \omega} A+\frac{\partial}{\partial \omega} B &= -y_i (1 - \hat{y}_i) x_i + (1 - y_i) \hat{y}_i x_i 
+= \big(-y_i + y_i \hat{y}_i + \hat{y}_i - y_i \hat{y}_i \big) x_i\\
+&= (-y_i + \hat{y}_i) x_i = (\hat{y}_i-y_i ) x_i\\
+%
+\implies \nabla L_1(\omega) &= \frac{1}{n} \sum_{i=1}^n \frac{\partial}{\partial \omega} A_i+\frac{\partial}{\partial \omega} B_i
+= \frac{1}{n} \sum_{i=1}^n \big[\hat{y}_i - y_i\big] x_i = \frac{1}{n} X^\top (\hat{y} - y)
+\end{align*}
+For the Hessian it then follows
+\begin{align*}
+\nabla^2 _\omega L_1(\omega) &= \nabla_\omega \frac{1}{n} X^\top (\hat{y} - y) 
+= \frac{1}{n} X^\top  
+= \nabla _\omega (\hat{y}-y)
+= \frac{1}{n} X^\top  \nabla _\omega \hat{y} \\
+%
+\frac{\partial}{\partial \omega} \big( \hat{y}_i x_i \big) 
+&= \hat{y}_i (1 - \hat{y}_i) x_i x_i^\top\\
+%
+\implies \frac{\partial \hat{y}}{\partial \omega} &= \operatorname{diag}\bigl(\sigma(X\omega) \odot (1 - \sigma(X\omega))\bigr) X \\
+%
+\implies \nabla^2 L_1(\omega) &= \frac{1}{n} X^\top \operatorname{diag}(\hat{y} \odot (1 - \hat{y})) X \\
+%
+\implies \nabla^2 L_1(\omega) &= \frac{1}{n} X^\top D X\\
+D &= \operatorname{diag}(\hat{y}_i (1 - \hat{y}_i)).
+\end{align*}
+For $L_2$ we have
 \begin{align*}
 L_2(\omega) &= \frac{1}{n} \sum_{i=1}^n \underbrace{\log \left(1 + \exp(-y_i x_i^\top \omega)\right) }_{f_i(\omega)} + \underbrace{\lambda \sum_{j=1}^d \frac{\alpha \omega_j^2}{1 + \alpha \omega_j^2}}_{r(\omega)} \\
 \end{align*}
@@ -184,14 +219,6 @@ For the gradient we then get
  &= -\frac{1}{n} X^\top \big(y \odot \sigma(-y \odot (X \omega))\big) + 2 \lambda \alpha \frac{\omega}{(1 + \alpha \omega^2)^2}
 \end{align*}
 For the Hessians we first observe two remarks:\\
-Remark 2:
-\begin{align*}
-  \sigma(z) &= \frac{1}{1 + e^{-z}} \\
-  \implies \frac{d}{dz} \sigma(z) &= \frac{d}{dz} (1 + e^{-z})^{-1}
-  = -(1 + e^{-z})^{-2} \cdot (-e^{-z}) = \frac{e^{-z}}{(1 + e^{-z})^2}
-  = \frac{1}{1 + e^{-z}} \cdot \frac{e^{-z}}{1 + e^{-z}}
-  = \sigma(z) (1 - \sigma(z))
-\end{align*}
 Remark 3: By chain rule we have
 \begin{align*}
 z_i(\omega) &:= -y_i x_i^\top \omega \\
