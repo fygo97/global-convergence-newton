@@ -123,8 +123,14 @@ class MultivarLogReg():
 
 
         for class_idx, cls in enumerate(self.classes_):
-            binary_y = (y == cls).astype(float)
+            if num_classes > 1:
+                binary_y = (y == cls).astype(np.float32)
+            else:
+                binary_y = y
             weights = np.random.rand(x.shape[1]) * 0.1
+
+            per_class_loss = []
+            per_class_train_acc = []
 
             for epoch in trange(epochs, desc="Training Epochs"):
                 # Shuffle indices
@@ -146,22 +152,24 @@ class MultivarLogReg():
                     elif self.method == Method.NEWTON:
                         weights = self.perform_Newton_update_step(weights, x_batch, y_batch, lr, lbd=lbd)
                     elif self.method == Method.M22:
-                        weights = self.perform_Mishchenko22_update_step(weights, x, y)
+                        weights = self.perform_Mishchenko22_update_step(weights, x_batch, y_batch, lbd=lbd)
                     elif self.method == Method.CUBIC:
-                        weights = self.perform_Cubic_update_step(weights, x, y, 10)
+                        weights = self.perform_Cubic_update_step(weights, x_batch, y_batch, lbd=lbd, L_est=10)
 
                     if done:
                         break
 
                 # Evaluate full-batch performance after epoch
                 pred_class = self.predict(x)
-                self.train_accuracies.append(accuracy_score(y, pred_class))
-                self.losses.append(self.loss_function.loss(weights, x, y))
+                per_class_train_acc.append(accuracy_score(y, pred_class))
+                per_class_loss.append(self.loss_function.loss(weights, x, y))
 
                 if done:
                     break
 
             self.weights[class_idx] = weights
+            self.train_accuracies.append(per_class_train_acc)
+            self.losses.append(per_class_loss)
 
 
     def perform_GD_update_step(self, weights, x, y, lr):
@@ -179,13 +187,13 @@ class MultivarLogReg():
         weights = weights - lr * np.matmul(H_inv, error_w)
         return weights
 
-    def perform_Mishchenko22_update_step(self, weights, x, y, H_param = 0.1):
+    def perform_Mishchenko22_update_step(self, weights, x, y, lbd, H_param = 0.1 ):
         assert(self.loss_function != None)
-        g = self.loss_function.grad(weights, x, y)
+        g = self.loss_function.grad(weights, x, y) + lbd * weights
         grad_norm = np.linalg.norm(g)
         lambda_k = np.sqrt(H_param * grad_norm)
-        Hk = self.loss_function.hessian(weights, x, y)
-        reg_Hk = Hk + lambda_k * np.eye(len(x))
+        Hk = self.loss_function.hessian(weights, x, y) + np.identity(x.shape[1]) * lbd
+        reg_Hk = Hk + lambda_k * np.eye(len(Hk))
 
         try:
             p = np.linalg.solve(reg_Hk, g)
@@ -195,7 +203,7 @@ class MultivarLogReg():
         weights = weights - p
         return weights
 
-    def perform_Cubic_update_step(self, weights, x, y, L_est):
+    def perform_Cubic_update_step(self, weights, x, y, L_est, lbd):
         assert(self.loss_function != None)
         g = self.loss_function.grad(weights, x, y)
         H = self.loss_function.hessian(weights, x, y)

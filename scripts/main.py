@@ -13,11 +13,14 @@ import argparse
 
 DATASET = DataSet.A9A
 
-def make_plots(losses, accuracies, axs, row = 0): 
-    axs[0].plot(losses)
+def make_plots(losses, accuracies, axs, row=0): 
+    for loss in losses:
+        axs[0].plot(loss)
     axs[0].set_xlabel("epochs")
     axs[0].set_ylabel("loss")
-    axs[1].plot(accuracies)
+    
+    for acc in accuracies:
+        axs[1].plot(acc)
     axs[1].set_xlabel("epochs")
     axs[1].set_ylabel("accuracy")
 
@@ -148,12 +151,12 @@ if __name__ == '__main__':
         y_train = np.clip(y_train, 0.0, 1.0)
         y_test = np.clip(y_test, 0.0, 1.0)
 
-    lr = MultivarLogReg(Method.CUBIC, loss_type=loss_type)
+    lr = MultivarLogReg(Method.M22, loss_type=loss_type)
     ones = np.ones(X_test.shape[0]).reshape((-1, 1))
     X_test = np.hstack([ones, X_test])
 
-    epochs = 6
-    lr.fit(X_train, y_train, epochs=epochs, lr=0.1, batch_size=2048, lbd=1)
+    epochs = 30
+    lr.fit(X_train, y_train, epochs=epochs, lr=0.1, batch_size=2048, lbd=1e-8)
     print("Training complete")
 
     print(X_train.shape)
@@ -163,8 +166,6 @@ if __name__ == '__main__':
 
     # Plotting
     fig, axs = plt.subplots(1, 2)
-    #make_plots(lr.losses, lr.train_accuracies, axs, row=0)
     make_plots(lr.losses, lr.train_accuracies, axs, row=0)
-    #print(f"test accuracy GD: {accuracy}")
-    print(f"test accuracy Newton: {accuracy2}")
+    print(f"Test accuracy: {accuracy2}")
     plt.show()

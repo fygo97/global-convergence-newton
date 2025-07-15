@@ -8,8 +8,6 @@ class CELoss:
         return loss
 
     def grad(self, weights, x, y):
-        print(weights.shape)
-        print(x.shape)
         probs = expit(x @ weights.T)
         grad = (x.T @ (probs - y)) / len(y)
         return grad
