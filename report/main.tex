@@ -107,10 +107,11 @@ To ensure the loss functions correspond to the correct likelihood, the label enc
 The corresponding gradients of $L_i$ are
 \begin{align}
 \nabla L_1(x) &= \frac{1}{n} X^\top (\hat{y} - y) \\
-\nabla L_2(x) &= -\frac{1}{n} X^\top \big(y \odot \sigma(-y \odot (X\omega))\big) + \nabla r(x)\\
-\text{with}\quad & \nabla r(\omega)^\top = \lambda \cdot \left[ \frac{2\alpha \omega _1}{(1 + \alpha \omega _1^2)^2},...,\frac{2\alpha \omega _d}{(1 + \alpha \omega _d^2)^2} \right] \quad \text{and $\sigma(\ \cdot \ )$ applied  elementwise}\notag\\
-\text{and} \ \ \odot& \ \ \text{denotes the entrywise multiplication of vectors.}\notag
+\nabla L_2(x) &= -\frac{1}{n} X^\top \big(y \odot \sigma(-y \odot (X\omega))\big) + \nabla r(x)
 \end{align}
+with $\nabla r(\omega)^\top = \lambda \left[ \frac{2\alpha \omega_1}{(1 + \alpha \omega_1^2)^2}, \ldots, \frac{2\alpha \omega_d}{(1 + \alpha \omega_d^2)^2} \right]$, where $\sigma(\cdot)$ is applied elementwise, and $\odot$ denotes the entrywise multiplication of vectors.
+
+
 Differentiating again yields the Hessians
 \begin{align}
 \nabla^2 L_1(\omega) &= \frac{1}{n} X^\top D X\\
