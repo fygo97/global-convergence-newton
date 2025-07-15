@@ -147,14 +147,13 @@ if __name__ == '__main__':
     if DATASET != "mnist":
         y_train = np.clip(y_train, 0.0, 1.0)
         y_test = np.clip(y_test, 0.0, 1.0)
-        lr = CustomLogReg(Method.NEWTON, loss_type=loss_type)
-    else:
-        lr = MultivarLogReg(Method.NEWTON, loss_type=loss_type)
-        ones = np.ones(X_test.shape[0]).reshape((-1, 1))
-        X_test = np.hstack([ones, X_test])
+
+    lr = MultivarLogReg(Method.CUBIC, loss_type=loss_type)
+    ones = np.ones(X_test.shape[0]).reshape((-1, 1))
+    X_test = np.hstack([ones, X_test])
 
     epochs = 6
-    lr.fit(X_train, y_train, epochs=epochs, lr=0.1, batch_size=2048, lbd=0.0)
+    lr.fit(X_train, y_train, epochs=epochs, lr=0.1, batch_size=2048, lbd=1)
     print("Training complete")
 
     print(X_train.shape)

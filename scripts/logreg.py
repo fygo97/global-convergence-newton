@@ -145,6 +145,11 @@ class MultivarLogReg():
                         weights = self.perform_GD_update_step(weights, x_batch, y_batch, lr / (epoch + 1))  # decreasing step size
                     elif self.method == Method.NEWTON:
                         weights = self.perform_Newton_update_step(weights, x_batch, y_batch, lr, lbd=lbd)
+                    elif self.method == Method.M22:
+                        weights = self.perform_Mishchenko22_update_step(weights, x, y)
+                    elif self.method == Method.CUBIC:
+                        weights = self.perform_Cubic_update_step(weights, x, y, 10)
+
                     if done:
                         break
 
@@ -172,6 +177,32 @@ class MultivarLogReg():
         hessian = self.loss_function.hessian(weights, x, y) + np.identity(x.shape[1]) * lbd
         H_inv = np.linalg.inv(hessian)
         weights = weights - lr * np.matmul(H_inv, error_w)
+        return weights
+
+    def perform_Mishchenko22_update_step(self, weights, x, y, H_param = 0.1):
+        assert(self.loss_function != None)
+        g = self.loss_function.grad(weights, x, y)
+        grad_norm = np.linalg.norm(g)
+        lambda_k = np.sqrt(H_param * grad_norm)
+        Hk = self.loss_function.hessian(weights, x, y)
+        reg_Hk = Hk + lambda_k * np.eye(len(x))
+
+        try:
+            p = np.linalg.solve(reg_Hk, g)
+        except np.linalg.LinAlgError:
+            p = np.linalg.lstsq(reg_Hk, g, rcond=None)[0]
+
+        weights = weights - p
+        return weights
+
+    def perform_Cubic_update_step(self, weights, x, y, L_est):
+        assert(self.loss_function != None)
+        g = self.loss_function.grad(weights, x, y)
+        H = self.loss_function.hessian(weights, x, y)
+        g_norm = np.sqrt(g @ np.linalg.solve(H, g))
+        alpha = (-1 + np.sqrt(1 + 2 * L_est * g_norm)) / (L_est * g_norm + 1e-12)
+        s = np.linalg.solve(H, g)
+        weights = weights - alpha * s
         return weights
 
 
