@@ -228,13 +228,13 @@ and applying Remark 3 yields
 \end{align*}
 %
 \begin{align*}
-\implies &\nabla_\omega \big(y \odot \sigma(-y \odot (X\omega))\big) = 
+\implies &\nabla_\omega \big(y \odot \sigma(-y \odot (X\omega))\big) = -
 \begin{pmatrix}
- \overbrace{- \sigma(-y_1 x_1^\top \omega) \big(1 - \sigma(-y_1 x_1^\top \omega)\big)}^{=D_{1,1}} x_1 \\
+ \overbrace{\sigma(-y_1 x_1^\top \omega) \big(1 - \sigma(-y_1 x_1^\top \omega)\big)}^{=D_{1,1}} x_1 \\
  \vdots \\
- \underbrace{ - \sigma(-y_n x_n^\top \omega) \big(1 - \sigma(-y_n x_n^\top \omega)\big)}_{D_{n,n}} x_n
+ \underbrace{ \sigma(-y_n x_n^\top \omega) \big(1 - \sigma(-y_n x_n^\top \omega)\big)}_{D_{n,n}} x_n
 \end{pmatrix}\\
-&=
+&= -
 \begin{bmatrix}
 D_{1,1} & 0       & \cdots & 0       \\
 0       & D_{2,2} & \cdots & 0       \\
@@ -248,7 +248,7 @@ x_{2,1} & x_{2,2} & \cdots & x_{2,d} \\
 \vdots  & \vdots  & \ddots & \vdots  \\
 x_{n,1} & x_{n,2} & \cdots & x_{n,d}
 \end{bmatrix} \\
-&=
+&= -
 \begin{bmatrix}
 D_{1,1}\,x_{1,1} & D_{1,1}\,x_{1,2} & \cdots & D_{1,1}\,x_{1,d} \\
 D_{2,2}\,x_{2,1} & D_{2,2}\,x_{2,2} & \cdots & D_{2,2}\,x_{2,d} \\
@@ -256,19 +256,19 @@ D_{2,2}\,x_{2,1} & D_{2,2}\,x_{2,2} & \cdots & D_{2,2}\,x_{2,d} \\
 D_{n,n}\,x_{n,1} & D_{n,n}\,x_{n,2} & \cdots & D_{n,n}\,x_{n,d}
 \end{bmatrix}
 %% 
-=
+= -
 \begin{bmatrix}
 D_{1,1}\,x_1^\top \\
 D_{2,2}\,x_2^\top \\
 \vdots           \\
 D_{n,n}\,x_n^\top
 \end{bmatrix}
-= \frac{1}{n} D X\\
+= - D X\\
 \end{align*}
 where we factored out the $x_i$ in the last step to rewrite it as matrix-vector product. Deriving the entire expression we conclude:
 \begin{align*}
 \nabla ^2 f(\omega) &= -\frac{1}{n} X^\top \nabla_\omega \big(y \odot \sigma(-y \odot (X\omega))\big) = \frac{1}{n} X^\top D X \\
-D_{ii} &= -\sigma(-y_i x_i^\top \omega)\big(1 - \sigma(-y_i x_i^\top \omega)\big) \quad
+D_{ii} &= \sigma(-y_i x_i^\top \omega)\big(1 - \sigma(-y_i x_i^\top \omega)\big) \quad
 \end{align*}
 %
 The hessian of the non-convex regularization term is derived by
@@ -282,11 +282,11 @@ The hessian of the non-convex regularization term is derived by
 \implies & \nabla^2 r(\omega) = \operatorname{diag}\left(2 \lambda \alpha \frac{1 - 3 \alpha \omega_j^2}{(1 + \alpha \omega_j^2)^3}\right)_{j=1,\ldots,d}
 \end{align*}
 Combining the steps we derive the Hessian
-\begin{align}
+\begin{align*}
 \nabla^2 L_2(\omega) &= \nabla^2 f(\omega) + \nabla^2 r(\omega)
 = \frac{1}{n} X^\top D X + \operatorname{diag}\left(2 \lambda \alpha \frac{1 - 3 \alpha \omega^2}{(1 + \alpha \omega^2)^3}\right) \\
-D_{ii} &= -\sigma(-y_i x_i^\top \omega) \big(1 - \sigma(-y_i x_i^\top \omega)\big)
-\end{align}
+D_{ii} &= \sigma(-y_i x_i^\top \omega) \big(1 - \sigma(-y_i x_i^\top \omega)\big)
+\end{align*}
 
 
 
