@@ -54,18 +54,18 @@
 \end{abstract}
 
 \section{Introduction}
-In this paper we consider problems of the
+In this paper we consider problems of the form
 
 \begin{equation}
   \min_{x \in \mathbb{R}^d} f(\mathbf{x})
 \end{equation}
 
-where $f: \mathbb{R}^d \rightarrow \mathbb{R}$ is a twice-differentiable function. First-order optimization methods are widely used for such problems due to their low per-iteration computational cost and their suitability for parallelization they often suffer from slow convergence for ill-conditioned objective functions \cite{wright}.
+where $f: \mathbb{R}^d \rightarrow \mathbb{R}$ is a twice-differentiable function. First-order optimization methods are widely used for such problems due to their low per-iteration computational cost and their suitability for parallelization. They often suffer from slow convergence for ill-conditioned objective functions \cite{wright}.
 Newton's method is a popular optimization algorithm that is commonly used to solve optimization
 problems. It is a second-order optimization algorithm since it uses second-order information of the
 objective function. Newton's method is known to have fast local convergence guarantees for convex
 functions. However, the global convergence properties of Newton's method are still an active area of
-research \cite{mishchenko2023regularized} \cite{hanzely2022damped}. In contrast to first-order methods such as gradient descent, second-order methods such as Newton's method can achieve much faster convergence when presented with ill conditioned Hessians by transferring the problem into a more isotropic optimization problem at the cost of an increase to cubic run time. Newton's method yields local quadratic convergence if $f$ is twice differentiable (or we have suitable regularity conditions), which degrades to sublinear convergence outside of the local regions.
+research \cite{mishchenko2023regularized} \cite{hanzely2022damped}. In contrast to first-order methods like gradient descent, second-order methods, such as Newton's method can achieve much faster convergence when presented with ill conditioned Hessians by transferring the problem into a more isotropic optimization problem at the cost of an increase to cubic run time. Newton's method yields local quadratic convergence if $f$ is twice differentiable (or we have suitable regularity conditions), which degrade outside of the local regions, yielding up to sublinear global convergence guarantees, depending on the alogithm.
 
 In this paper, we explore the theoretical foundations of several Newton-type methods that achieve different global convergence guarantees, compare their performance in a classification-type problem for two loss functions on four different datasets.
 Finally we will propose two modifications of the algorithms to achieve an increase in runtime, by either coupling the Newton-type method with a conjugate gradient method for Hessian vector multiplication or Strassen's algorithm for fast matrix inversion.
@@ -92,17 +92,30 @@ which yields the two optimization problems
   \min _{\omega} L_1(\omega)\\
   \min _{\omega} L_2(\omega)
 \end{align}
+Remark 1: The 0-1 loss function for logistic regression is given by
+\begin{align*}
+  -\sum_{i=1}^N \log\left[ \mu_i^{\mathbb{I}(y_i=1)} (1-\mu_i)^{\mathbb{I}(y_i=0)} \right] 
+  =  -\sum_{i=1}^N \left[ y_i \log \mu_i + (1 - y_i) \log(1-\mu_i) \right]
+\end{align*}
+for labels $y_i \in \{0,1\}$ \cite[Eq.~8.2--8.3]{murphy2012ml}.
+If we instead use labels $\tilde{y}_i \in \{-1, +1\}$, the negative log-likelihood becomes
+\begin{align*}
+  \sum_{i=1}^N \log\left(1 + \exp(-\tilde{y}_i\,\mathbf{w}^T\mathbf{x}_i)\right)
+\end{align*}
+\cite[Eq.~8.4]{murphy2012ml}.
+To ensure the loss functions correspond to the correct likelihood, the label encoding must match the loss form \cite[Sec.~8.3.1]{murphy2012ml}.\\
 The corresponding gradients of $L_i$ are
 \begin{align}
 \nabla L_1(x) &= \frac{1}{n} X^\top (\hat{y} - y) \\
-\nabla L_2(x) &= -\frac{1}{n} X^\top \big(y \odot \sigma(-y \odot (X\omega))\big) + \nabla r(x)\\
-\text{with}\quad & \nabla r(\omega)^\top = \lambda \cdot \left[ \frac{2\alpha \omega _1}{(1 + \alpha \omega _1^2)^2},...,\frac{2\alpha \omega _d}{(1 + \alpha \omega _d^2)^2} \right] \quad \text{and $\sigma(\ \cdot \ )$ applied  elementwise}\notag\\
-\text{and} \ \ \odot& \ \ \text{denotes the entrywise multiplication of vectors.}\notag
+\nabla L_2(x) &= -\frac{1}{n} X^\top \big(y \odot \sigma(-y \odot (X\omega))\big) + \nabla r(x)
 \end{align}
+with $\nabla r(\omega)^\top = \lambda \left[ \frac{2\alpha \omega_1}{(1 + \alpha \omega_1^2)^2}, \ldots, \frac{2\alpha \omega_d}{(1 + \alpha \omega_d^2)^2} \right]$, where $\sigma(\cdot)$ is applied elementwise, and $\odot$ denotes the entrywise multiplication of vectors.
+
+
 Differentiating again yields the Hessians
 \begin{align}
 \nabla^2 L_1(\omega) &= \frac{1}{n} X^\top D X\\
-\nabla^2 L_2(\omega) &= \frac{1}{n} X^\top D X + \nabla^2 r(\omega), \nabla^2, \quad
+\nabla^2 L_2(\omega) &= \frac{1}{n} X^\top D X + \nabla^2 r(\omega), \quad
 r(\omega) = \operatorname{diag}\Big(\lambda \frac{2\alpha (1 - 3\alpha \omega_j^2)}{(1 + \alpha \omega_j^2)^3}\Big)
 \end{align}
 where the diagonal matrix $D$ has entries
@@ -110,7 +123,7 @@ where the diagonal matrix $D$ has entries
 D_{ii} &= \hat{y}_i (1 - \hat{y}_i)=  \sigma(-y_i x_i^\top \omega) \big(1 - \sigma(-y_i x_i^\top \omega)\big),\quad 
 \end{align}
 Observation:\\
-Since $\log(\hat{y_i}),\log(1-\hat{y_i})$ are concave on $(0,\infty)$ it follows that $-\log(\hat{y_i}),-\log(1-\hat{y_i})$ are convex and thus $L_1$ is a linear combination of convex functions (which is agian convex). Meanwhile $L_2$ is not guaranteed to be convex due to the non-convex regularization term $r(\omega)$. 
+Since $\log(\hat{y_i}),\log(1-\hat{y_i})$ are concave on $(0,\infty)$ it follows that $-\log(\hat{y_i}),-\log(1-\hat{y_i})$ are convex and thus $L_1$ is a linear combination of convex functions (which is again convex). Meanwhile $L_2$ is not guaranteed to be convex due to the non-convex regularization term $r(\omega)$. 
 
 \subsection{Classic Newton's Method}
 
@@ -131,7 +144,7 @@ The cubic Newton method was one of the first to achieve a good complexity guaran
 
 \subsection{Levenberg and Marquardt method}
 
-The Levenberg-Marquardt's algorithm [REFERENCE] is an early form of regularized Newton's method that modifies the Hessian. For ill conditioned (or singular) H this can increase conergence (or make the problem solvable as $H + \lambda I$ is always invertible for sufficiently large $eig(H)> - \lambda, \lambda > 0$).he update rule is:
+The Levenberg-Marquardt's algorithm [REFERENCE] is an early form of regularized Newton's method that modifies the Hessian. For ill conditioned (or singular) H regularization can increase the conergence (or make the problem solvable as $H + \lambda I$ is always invertible for sufficiently large $eig(H)> - \lambda, \lambda > 0$). The update rule is:
 \begin{equation}
 \mathbf{x}_{k+1} = \mathbf{x}_{k} - ( \nabla^2 f(\mathbf{x}_k) + \lambda_k \mathbf{I})^{-1} \nabla f(\mathbf{x}_k)
 \end{equation}
@@ -148,14 +161,49 @@ In their 2023 article Michenko presents a variation of Newton's method that uses
 where $H > 0$ is a constant. The convergence rate of this algorithm is $\mathcal{O}(\frac{1}{k^2})$. This method uses an adaptive variant of the Levenberg-Marquardt regularization. 
 
 \subsection{Appendix}
+Remark 2:
 \begin{align*}
-L_1(\omega) &= -\frac{1}{n} \sum_{i=1}^n \Big[y_i \log \hat{y}_i + (1 - y_i) \log (1 - \hat{y}_i)\Big] \\
-\hat{y}_i &= \sigma(x_i^\top \omega) = \frac{1}{1 + e^{-x_i^\top \omega}} \\
-\frac{\partial}{\partial \omega} \big(-y_i \log \hat{y}_i\big) &= -y_i \frac{1}{\hat{y}_i} \hat{y}_i (1 - \hat{y}_i) x_i = -y_i (1 - \hat{y}_i) x_i \\
-\frac{\partial}{\partial \omega} \big(-(1 - y_i) \log (1 - \hat{y}_i)\big) &= (1 - y_i) \frac{1}{1 - \hat{y}_i} \hat{y}_i (1 - \hat{y}_i) x_i = (1 - y_i) \hat{y}_i x_i \\
-\nabla L_1(\omega) &= \frac{1}{n} \sum_{i=1}^n \big[\hat{y}_i - y_i\big] x_i = \frac{1}{n} X^\top (\hat{y} - y)
+  \sigma(z) &= \frac{1}{1 + e^{-z}} \\
+  \implies \frac{d}{dz} \sigma(z) &= \frac{d}{dz} (1 + e^{-z})^{-1}
+  = -(1 + e^{-z})^{-2} \cdot (-e^{-z}) = \frac{e^{-z}}{(1 + e^{-z})^2}
+  = \frac{1}{1 + e^{-z}} \cdot \frac{e^{-z}}{1 + e^{-z}}
+  = \sigma(z) (1 - \sigma(z))
 \end{align*}
-TODO: Hessian von L1 ausrechnen. (Ist aber gesichert korrekt wegen IBM)
+\begin{align*}
+L_1(\omega) &= -\frac{1}{n} \sum_{i=1}^n \Big[\underbrace{y_i \log \hat{y}_i}_{=:A_i} + \underbrace{(1 - y_i) \log (1 - \hat{y}_i)}_{=:B_i}\Big] \\
+\hat{y}_i &= \sigma(x_i^\top \omega) = \frac{1}{1 + e^{-x_i^\top \omega}} \\
+\end{align*}
+and applying Remark 2 to $\hat{y}$ we get, that
+\begin{align*}
+\frac{\partial}{\partial \omega} A_i &= \frac{\partial}{\partial \omega}\big(-y_i \log \hat{y}_i\big) = -y_i \frac{1}{\hat{y}_i} \hat{y}_i (1 - \hat{y}_i) x_i = -y_i (1 - \hat{y}_i) x_i \\
+%
+\frac{\partial}{\partial \omega} B_i &=\frac{\partial}{\partial \omega} \big(-(1 - y_i) \log (1 - \hat{y}_i)\big) = (1 - y_i) \frac{1}{1 - \hat{y}_i} \hat{y}_i (1 - \hat{y}_i) x_i = (1 - y_i) \hat{y}_i x_i\\
+%
+\frac{\partial}{\partial \omega} A+\frac{\partial}{\partial \omega} B &= -y_i (1 - \hat{y}_i) x_i + (1 - y_i) \hat{y}_i x_i 
+= \big(-y_i + y_i \hat{y}_i + \hat{y}_i - y_i \hat{y}_i \big) x_i\\
+&= (-y_i + \hat{y}_i) x_i = (\hat{y}_i-y_i ) x_i\\
+%
+\implies \nabla L_1(\omega) &= \frac{1}{n} \sum_{i=1}^n \frac{\partial}{\partial \omega} A_i+\frac{\partial}{\partial \omega} B_i
+= \frac{1}{n} \sum_{i=1}^n \big[\hat{y}_i - y_i\big] x_i = \frac{1}{n} X^\top (\hat{y} - y)
+\end{align*}
+For the Hessian it then follows
+\begin{align*}
+\nabla^2 _\omega L_1(\omega) &= \nabla_\omega \frac{1}{n} X^\top (\hat{y} - y) 
+= \frac{1}{n} X^\top  
+= \nabla _\omega (\hat{y}-y)
+= \frac{1}{n} X^\top  \nabla _\omega \hat{y} \\
+%
+\frac{\partial}{\partial \omega} \big( \hat{y}_i x_i \big) 
+&= \hat{y}_i (1 - \hat{y}_i) x_i x_i^\top\\
+%
+\implies \frac{\partial \hat{y}}{\partial \omega} &= \operatorname{diag}\bigl(\sigma(X\omega) \odot (1 - \sigma(X\omega))\bigr) X \\
+%
+\implies \nabla^2 L_1(\omega) &= \frac{1}{n} X^\top \operatorname{diag}(\hat{y} \odot (1 - \hat{y})) X \\
+%
+\implies \nabla^2 L_1(\omega) &= \frac{1}{n} X^\top D X\\
+D &= \operatorname{diag}(\hat{y}_i (1 - \hat{y}_i)).
+\end{align*}
+For $L_2$ we have
 \begin{align*}
 L_2(\omega) &= \frac{1}{n} \sum_{i=1}^n \underbrace{\log \left(1 + \exp(-y_i x_i^\top \omega)\right) }_{f_i(\omega)} + \underbrace{\lambda \sum_{j=1}^d \frac{\alpha \omega_j^2}{1 + \alpha \omega_j^2}}_{r(\omega)} \\
 \end{align*}
@@ -172,15 +220,7 @@ For the gradient we then get
  &= -\frac{1}{n} X^\top \big(y \odot \sigma(-y \odot (X \omega))\big) + 2 \lambda \alpha \frac{\omega}{(1 + \alpha \omega^2)^2}
 \end{align*}
 For the Hessians we first observe two remarks:\\
-Remark 1:
-\begin{align*}
-  \sigma(z) &= \frac{1}{1 + e^{-z}} \\
-  \implies \frac{d}{dz} \sigma(z) &= \frac{d}{dz} (1 + e^{-z})^{-1}
-  = -(1 + e^{-z})^{-2} \cdot (-e^{-z}) = \frac{e^{-z}}{(1 + e^{-z})^2}
-  = \frac{1}{1 + e^{-z}} \cdot \frac{e^{-z}}{1 + e^{-z}}
-  = \sigma(z) (1 - \sigma(z))
-\end{align*}
-Remark 2: By chain rule we have
+Remark 3: By chain rule we have
 \begin{align*}
 z_i(\omega) &:= -y_i x_i^\top \omega \\
 \implies \nabla_\omega z_i(\omega) &= -y_i x_i \\
@@ -204,23 +244,25 @@ y_2 \sigma(-y_2 x_2^\top \omega) \\
 y_n \sigma(-y_n x_n^\top \omega)
 \end{pmatrix}
 \end{align*}
-and applying Remark 2 yields 
+and applying Remark 3 yields 
 \begin{align*}
 \nabla_\omega \sigma(-y_i x_i^\top \omega) 
 &= \sigma(-y_i x_i^\top \omega)\big(1 - \sigma(-y_i x_i^\top \omega)\big)(-y_i x_i) \\
 %
 \implies \nabla_\omega \big(y_i \, \sigma(-y_i x_i^\top \omega)\big) 
-&= -y_i^2 \, \sigma(-y_i x_i^\top \omega)\big(1 - \sigma(-y_i x_i^\top \omega)\big) x_i \\
+=& -\underbrace{y_i^2}_{=1 \text{ by Remark 1}} \, \sigma(-y_i x_i^\top \omega)\big(1 - \sigma(-y_i x_i^\top \omega)\big) x_i 
+=- \sigma(-y_i x_i^\top \omega)\big(1 - \sigma(-y_i x_i^\top \omega)\big) x_i \\
 %
 \end{align*}
+%
 \begin{align*}
-\implies \nabla_\omega \big(y \odot \sigma(-y \odot (X\omega))\big) &= 
+\implies &\nabla_\omega \big(y \odot \sigma(-y \odot (X\omega))\big) = -
 \begin{pmatrix}
- \overbrace{-y_1^2 \sigma(-y_1 x_1^\top \omega) \big(1 - \sigma(-y_1 x_1^\top \omega)\big)}^{=D_{1,1}} x_1 \\
+ \overbrace{\sigma(-y_1 x_1^\top \omega) \big(1 - \sigma(-y_1 x_1^\top \omega)\big)}^{=D_{1,1}} x_1 \\
  \vdots \\
- \underbrace{ -y_n^2 \sigma(-y_n x_n^\top \omega) \big(1 - \sigma(-y_n x_n^\top \omega)\big)}_{D_{n,n}} x_n
+ \underbrace{ \sigma(-y_n x_n^\top \omega) \big(1 - \sigma(-y_n x_n^\top \omega)\big)}_{D_{n,n}} x_n
 \end{pmatrix}\\
-=
+&= -
 \begin{bmatrix}
 D_{1,1} & 0       & \cdots & 0       \\
 0       & D_{2,2} & \cdots & 0       \\
@@ -233,43 +275,46 @@ x_{1,1} & x_{1,2} & \cdots & x_{1,d} \\
 x_{2,1} & x_{2,2} & \cdots & x_{2,d} \\
 \vdots  & \vdots  & \ddots & \vdots  \\
 x_{n,1} & x_{n,2} & \cdots & x_{n,d}
-\end{bmatrix} 
-&=
+\end{bmatrix} \\
+&= -
 \begin{bmatrix}
 D_{1,1}\,x_{1,1} & D_{1,1}\,x_{1,2} & \cdots & D_{1,1}\,x_{1,d} \\
 D_{2,2}\,x_{2,1} & D_{2,2}\,x_{2,2} & \cdots & D_{2,2}\,x_{2,d} \\
 \vdots           & \vdots           & \ddots & \vdots           \\
 D_{n,n}\,x_{n,1} & D_{n,n}\,x_{n,2} & \cdots & D_{n,n}\,x_{n,d}
-\end{bmatrix} \\
+\end{bmatrix}
 %% 
-&=
+= -
 \begin{bmatrix}
 D_{1,1}\,x_1^\top \\
 D_{2,2}\,x_2^\top \\
 \vdots           \\
 D_{n,n}\,x_n^\top
 \end{bmatrix}
-= \frac{1}{n} D X\\
+= - D X\\
 \end{align*}
-where we factored out the $x_i$ in the last step to rewrite it as matrix-vector product.
+where we factored out the $x_i$ in the last step to rewrite it as matrix-vector product. Deriving the entire expression we conclude:
 \begin{align*}
-&= \frac{1}{n} X^\top D X \\
-D_{ii} &= y_i^2 \sigma(-y_i x_i^\top \omega)\big(1 - \sigma(-y_i x_i^\top \omega)\big)
-%
-%
-%
-\nabla ^2 _\omega r(\omega) &= \nabla _\omega \left(2 \lambda \alpha \frac{\omega_j}{(1 + \alpha \omega_j^2)^2} \right)\\
-\frac{\partial^2}{\partial \omega_j^2} r(\omega) &= 2 \lambda \alpha \frac{\partial}{\partial \omega_j} \left( \frac{\omega_j}{(1 + \alpha \omega_j^2)^2} \right) \\
-&= 2 \lambda \alpha \frac{(1 + \alpha \omega_j^2)^2 - 4 \alpha \omega_j^2 (1 + \alpha \omega_j^2)}{(1 + \alpha \omega_j^2)^4} \\
-&= 2 \lambda \alpha \frac{1 - 3 \alpha \omega_j^2}{(1 + \alpha \omega_j^2)^3} \\
-\nabla^2 r(\omega) &= \operatorname{diag}\left(2 \lambda \alpha \frac{1 - 3 \alpha \omega_j^2}{(1 + \alpha \omega_j^2)^3}\right)_{j=1,\ldots,d}
+\nabla ^2 f(\omega) &= -\frac{1}{n} X^\top \nabla_\omega \big(y \odot \sigma(-y \odot (X\omega))\big) = \frac{1}{n} X^\top D X \\
+D_{ii} &= \sigma(-y_i x_i^\top \omega)\big(1 - \sigma(-y_i x_i^\top \omega)\big) \quad
 \end{align*}
-
-\begin{align}
-\text{Final Hessian:} \quad \nabla^2 L_2(\omega) &= \nabla^2 f(\omega) + \nabla^2 r(\omega) \\
-&= \frac{1}{n} X^\top D X + \operatorname{diag}\left(2 \lambda \alpha \frac{1 - 3 \alpha \omega^2}{(1 + \alpha \omega^2)^3}\right) \\
+%
+The hessian of the non-convex regularization term is derived by
+\begin{align*}
+\nabla ^2 _\omega r(\omega) &= \nabla _\omega \left(2 \lambda \alpha \frac{\omega_j}{(1 + \alpha \omega_j^2)^2} \right)\\
+%
+\frac{\partial^2}{\partial \omega_j^2} r(\omega) 
+&= 2 \lambda \alpha \frac{\partial}{\partial \omega_j} \left( \frac{\omega_j}{(1 + \alpha \omega_j^2)^2} \right)
+= 2 \lambda \alpha \frac{(1 + \alpha \omega_j^2)^2 - 4 \alpha \omega_j^2 (1 + \alpha \omega_j^2)}{(1 + \alpha \omega_j^2)^4}
+= 2 \lambda \alpha \frac{1 - 3 \alpha \omega_j^2}{(1 + \alpha \omega_j^2)^3} \\
+\implies & \nabla^2 r(\omega) = \operatorname{diag}\left(2 \lambda \alpha \frac{1 - 3 \alpha \omega_j^2}{(1 + \alpha \omega_j^2)^3}\right)_{j=1,\ldots,d}
+\end{align*}
+Combining the steps we derive the Hessian
+\begin{align*}
+\nabla^2 L_2(\omega) &= \nabla^2 f(\omega) + \nabla^2 r(\omega)
+= \frac{1}{n} X^\top D X + \operatorname{diag}\left(2 \lambda \alpha \frac{1 - 3 \alpha \omega^2}{(1 + \alpha \omega^2)^3}\right) \\
 D_{ii} &= \sigma(-y_i x_i^\top \omega) \big(1 - \sigma(-y_i x_i^\top \omega)\big)
-\end{align}
+\end{align*}
 
 
 

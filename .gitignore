@@ -5,6 +5,14 @@
 
 .DS_Store
 
+*.t
+covtype
+ijcnn1
+mnist.scale
+mnist.scale.t
+a9a
+a9a.t
+
 ### LaTeX ###
 ## Core latex/pdflatex auxiliary files:
 *.aux
