@@ -16,6 +16,7 @@ class MultivarLogReg():
         self.loss_type = loss_type
         self.loss_function = None
         self.num_classes = num_classes
+        self.grad_norm = []
 
 
     def fit(self, x, y, epochs, lr = 0.1, batch_size = 2048, lbd = 1e-7, alpha = 0.5, mu=0.1):
@@ -42,6 +43,7 @@ class MultivarLogReg():
             weights = np.random.rand(x.shape[1]) * 0.1
 
             per_class_loss = []
+            per_class_grad_norm = []
 
             for epoch in trange(epochs, desc="Training Epochs"):
                 # Shuffle indices
@@ -72,6 +74,8 @@ class MultivarLogReg():
 
                 # Evaluate full-batch performance after epoch
                 per_class_loss.append(self.loss_function.loss(weights, x_shuffled, y_shuffled))
+                per_class_grad_norm.append(np.linalg.norm(self.loss_function.grad(weights, x, y)))
+
                 self.train_accuracies.append(accuracy_score(y_true=y, y_pred=self.predict(x, bias=False)))
 
                 if done:
@@ -79,6 +83,7 @@ class MultivarLogReg():
 
             self.weights[class_idx] = weights
             self.losses.append(per_class_loss)
+            self.grad_norm.append(per_class_grad_norm)
 
 
     def perform_GD_update_step(self, weights, x, y, lr):

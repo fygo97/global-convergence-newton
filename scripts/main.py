@@ -13,7 +13,7 @@ import argparse
 
 DATASET = DataSet.A9A
 
-def make_plots(losses, accuracies, axs, row=0): 
+def make_plots(losses, accuracies, grad_norm, axs, row=0): 
     for i, loss in enumerate(losses):
         axs[0].plot(loss, label=f"{i}")
 
@@ -26,6 +26,12 @@ def make_plots(losses, accuracies, axs, row=0):
     axs[1].set_ylabel("accuracy")
     axs[1].legend()
 
+    for i, gn in enumerate(grad_norm):
+        axs[2].plot(gn, label=f"{i}")
+
+    axs[2].set_xlabel("epochs")
+    axs[2].set_ylabel("grad_norm")
+    axs[2].legend()
 
 def download_and_preprocess_a9a():
 
@@ -163,7 +169,7 @@ if __name__ == '__main__':
     print(lr.train_accuracies)
 
     # Plotting
-    fig, axs = plt.subplots(1, 2)
-    make_plots(lr.losses, lr.train_accuracies, axs, row=0)
+    fig, axs = plt.subplots(1, 3)
+    make_plots(lr.losses, lr.train_accuracies, lr.grad_norm, axs, row=0)
     print(f"Test accuracy: {accuracy2}")
     plt.show()
