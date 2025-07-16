@@ -1,6 +1,8 @@
 import numpy as np
 from scipy.special import expit
 
+singeps=1e-5
+
 class CELoss:
     def loss(self, weights, x, y):
         probs = expit(x @ weights)
@@ -17,6 +19,8 @@ class CELoss:
         D_diag = probs * (1 - probs)
         D = np.diag(D_diag)
         hess = (x.T @ D @ x) / len(y)
+        if(abs(np.linalg.det(hess))<singeps):
+            print("Singular Hessian")
         return hess
 
 class NCCELoss:
@@ -45,4 +49,6 @@ class NCCELoss:
         f = (x.T @ W @ x) / len(y)
         r_diag = 2 * self.lambda_ * self.alpha * (1 - 3 * self.alpha * weights**2) / (1 + self.alpha * weights**2)**3
         r = np.diag(r_diag)
+        if(abs(np.linalg.det(hess))<singeps):
+            print("Singular Hessian")
         return f + r
