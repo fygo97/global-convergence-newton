@@ -131,6 +131,8 @@ if __name__ == '__main__':
                         help="Dataset to use (a9a, covtype, ijcnn1, mnist)")
     parser.add_argument("loss", type=str, choices=["ce", "ncce"], 
                         help="Loss function to use (ce, ncce)")
+    parser.add_argument("method", type=str, choices=["gd", "newton", "m22", "cubic"], 
+                        help="method to use (gd, newton, m22, cubic)")
     args = parser.parse_args()
     DATASET = args.dataset
 
@@ -144,10 +146,16 @@ if __name__ == '__main__':
         X_train, y_train, X_test, y_test = download_and_preprocess_mnist()
         print(y_test)
 
-    if args.loss == "ce":
-        loss_type = LossFunction.CE
-    else:
-        loss_type = LossFunction.NCCE
+    match args.method:
+        case "gd":
+            method = Method.GD
+        case "newton":
+            method = Method.NEWTON
+        case "m22":
+            method = Method.M22
+        case "cubic":
+            method = Method.CUBIC
+
 
     print(f"number of samples = {len(y_train)}")
     print("x max/min:", np.max(X_train), np.min(X_train))
@@ -159,9 +167,14 @@ if __name__ == '__main__':
         y_train = np.clip(y_train, 0.0, 1.0)
         y_test = np.clip(y_test, 0.0, 1.0)
 
-    lr = MultivarLogReg(Method.M22, loss_type=loss_type)
+    if args.loss == "ce":
+        loss_type = LossFunction.CE
+    else:
+        loss_type = LossFunction.NCCE
+
+    lr = MultivarLogReg(Method.GD, loss_type=loss_type)
     epochs = 10
-    lr.fit(X_train, y_train, epochs=epochs, lr=0.1, batch_size=2048, lbd=1e-8)
+    lr.fit(X_train, y_train, epochs=epochs, lr=0.1, batch_size=2048, lbd=0.0)
     print("Training complete")
 
     pred = lr.predict(X_test)
