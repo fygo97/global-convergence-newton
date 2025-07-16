@@ -36,10 +36,9 @@ class MultivarLogReg():
 
 
         for class_idx, cls in enumerate(self.classes_):
-            if num_classes > 1:
-                binary_y = (y == cls).astype(np.float32)
-            else:
-                binary_y = y
+            binary_y = (y == cls).astype(np.float32)
+            if self.loss_type == LossFunction.NCCE:
+                binary_y = binary_y * 2 - 1
             weights = np.random.rand(x.shape[1]) * 0.1
 
             per_class_loss = []
