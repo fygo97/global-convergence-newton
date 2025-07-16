@@ -134,8 +134,7 @@ def perform_train_run(dataset, loss_t, method, epochs):
         X_train, y_train, X_test, y_test = download_and_preprocess_mnist()
         print(y_test)
 
-    method = Method.GD
-    match args.method:
+    match method:
         case "gd":
             method = Method.GD
         case "newton":
