@@ -1,4 +1,5 @@
 import copy
+import logging
 import numpy as np
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import StandardScaler
@@ -6,6 +7,9 @@ from methods import Method, LossFunction
 from scipy.special import expit
 from tqdm import trange
 from loss import CELoss, NCCELoss
+
+logger = logging.getLogger(__name__)
+
 
 class MultivarLogReg():
 
@@ -18,14 +22,14 @@ class MultivarLogReg():
         self.num_classes = num_classes
         self.grad_norm = []
 
-
-    def fit(self, x, y, epochs, lr = 0.1, batch_size = 2048, lbd = 1e-7, alpha = 0.5, mu=0.1):
+    def fit(self, x, y, epochs, lr = 0.1, batch_size = 2048, lbd = 1e-7, alpha = 1.0, mu=0.001):
         ones = np.ones(x.shape[0]).reshape((-1, 1))
         x = np.hstack([ones, x])  # Add bias column
 
         self.classes_ = np.unique(y)
         num_classes = len(self.classes_)
         self.weights = np.random.rand(num_classes, x.shape[1]) * 5
+        logger.info(f"full weights shape = {self.weights.shape}")
 
         n_samples = x.shape[0]
 
@@ -40,6 +44,8 @@ class MultivarLogReg():
             if self.loss_type == LossFunction.NCCE:
                 binary_y = binary_y * 2 - 1
             weights = np.random.rand(x.shape[1]) * 0.1
+
+            logger.info(f"single weights shape = {weights.shape}")
 
             per_class_loss = []
             per_class_grad_norm = []

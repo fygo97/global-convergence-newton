@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 import requests
 import urllib3
@@ -10,6 +11,14 @@ from logreg import MultivarLogReg
 import matplotlib.pyplot as plt
 from methods import LossFunction, Method
 import argparse
+logger = logging.getLogger(__name__)
+
+logging.basicConfig(
+    filename='logreg_training.log',  # Log file name
+    level=logging.INFO,             # Minimum logging level
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    filemode='w'                     # Overwrite log file each run; use 'a' to append
+)
 
 
 def make_plots(losses, accuracies, grad_norm, axs, row=0): 
@@ -190,3 +199,4 @@ if __name__ == '__main__':
     fig, axs = plt.subplots(1, 3)
     make_plots(lr.losses, lr.train_accuracies, lr.grad_norm, axs, row=0)
     plt.show()
+
