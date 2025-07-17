@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 import requests
 import urllib3
@@ -6,21 +7,38 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, roc_curve, auc
 from sklearn.model_selection import train_test_split
 import os
-from logreg import CustomLogReg, MultivarLogReg
+from logreg import MultivarLogReg
 import matplotlib.pyplot as plt
-from methods import LossFunction, Method, DataSet
+from methods import LossFunction, Method
 import argparse
+logger = logging.getLogger(__name__)
 
-DATASET = DataSet.A9A
+logging.basicConfig(
+    filename='logreg_training.log',  # Log file name
+    level=logging.INFO,             # Minimum logging level
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    filemode='w'                     # Overwrite log file each run; use 'a' to append
+)
 
-def make_plots(losses, accuracies, axs, row = 0): 
-    axs[0].plot(losses)
+
+def make_plots(losses, accuracies, grad_norm, axs, row=0): 
+    for i, loss in enumerate(losses):
+        axs[0].plot(loss, label=f"{i}")
+
     axs[0].set_xlabel("epochs")
     axs[0].set_ylabel("loss")
-    axs[1].plot(accuracies)
-    axs[1].set_xlabel("epochs")
-    axs[1].set_ylabel("accuracy")
+    axs[0].legend()
+    
+    axs[2].plot(accuracies)
+    axs[2].set_xlabel("epochs")
+    axs[2].set_ylabel("accuracy")
 
+    for i, gn in enumerate(grad_norm):
+        axs[1].plot(gn, label=f"{i}")
+
+    axs[1].set_xlabel("epochs")
+    axs[1].set_ylabel("grad_norm")
+    axs[1].legend()
 
 def download_and_preprocess_a9a():
 
@@ -112,31 +130,29 @@ def download_and_preprocess_mnist():
 
     return X_train, y_train, X_test, y_test
 
-if __name__ == '__main__':
 
-    # Argparse 
-    parser = argparse.ArgumentParser(description="Select dataset to use.")
-    parser.add_argument("dataset", type=str, choices=["a9a", "covtype", "ijcnn1", "mnist"],
-                        help="Dataset to use (a9a, covtype, ijcnn1, mnist)")
-    parser.add_argument("loss", type=str, choices=["ce", "ncce"], 
-                        help="Loss function to use (ce, ncce)")
-    args = parser.parse_args()
-    DATASET = args.dataset
+def perform_train_run(dataset, loss_t, method, epochs):
 
-    if DATASET == "a9a":
+    if dataset == "a9a":
         X_train, y_train, X_test, y_test = download_and_preprocess_a9a()
-    elif DATASET == "covtype":
+    elif dataset == "covtype":
         X_train, y_train, X_test, y_test = download_and_preprocess_covtype()
-    elif DATASET == "ijcnn1":
+    elif dataset == "ijcnn1":
         X_train, y_train, X_test, y_test = download_and_preprocess_ijcnn1()
     else:
         X_train, y_train, X_test, y_test = download_and_preprocess_mnist()
         print(y_test)
 
-    if args.loss == "ce":
-        loss_type = LossFunction.CE
-    else:
-        loss_type = LossFunction.NCCE
+    match method:
+        case "gd":
+            method = Method.GD
+        case "newton":
+            method = Method.NEWTON
+        case "m22":
+            method = Method.M22
+        case "cubic":
+            method = Method.CUBIC
+
 
     print(f"number of samples = {len(y_train)}")
     print("x max/min:", np.max(X_train), np.min(X_train))
@@ -144,28 +160,42 @@ if __name__ == '__main__':
     print("Data sets have been loaded")
 
     # Training
-    if DATASET != "mnist":
+    if dataset != "mnist":
         y_train = np.clip(y_train, 0.0, 1.0)
         y_test = np.clip(y_test, 0.0, 1.0)
-        lr = CustomLogReg(Method.NEWTON, loss_type=loss_type)
-    else:
-        lr = MultivarLogReg(Method.NEWTON, loss_type=loss_type)
-        ones = np.ones(X_test.shape[0]).reshape((-1, 1))
-        X_test = np.hstack([ones, X_test])
 
-    epochs = 6
-    lr.fit(X_train, y_train, epochs=epochs, lr=0.1, batch_size=2048, lbd=0.0)
+    if loss_t == "ce":
+        loss_type = LossFunction.CE
+    else:
+        loss_type = LossFunction.NCCE
+        y_test = y_test * 2 - 1
+
+    lr = MultivarLogReg(method=method, loss_type=loss_type)
+    lr.fit(X_train, y_train, epochs=epochs, lr=1, batch_size=2048, lbd=0)
     print("Training complete")
 
-    print(X_train.shape)
-    print(X_test.shape)
     pred = lr.predict(X_test)
     accuracy2 = accuracy_score(y_test, pred)
 
+    print(f"Test accuracy: {accuracy2}")
+
+    return lr
+
+
+if __name__ == '__main__':
+    # Argparse 
+    parser = argparse.ArgumentParser(description="Select dataset to use.")
+    parser.add_argument("dataset", type=str, choices=["a9a", "covtype", "ijcnn1", "mnist"],
+                        help="Dataset to use (a9a, covtype, ijcnn1, mnist)")
+    parser.add_argument("loss", type=str, choices=["ce", "ncce"], 
+                        help="Loss function to use (ce, ncce)")
+    parser.add_argument("method", type=str, choices=["gd", "newton", "m22", "cubic"], 
+                        help="method to use (gd, newton, m22, cubic)")
+    args = parser.parse_args()
+
+    lr = perform_train_run(args.dataset, args.loss, args.method, 10)
+
     # Plotting
-    fig, axs = plt.subplots(1, 2)
-    #make_plots(lr.losses, lr.train_accuracies, axs, row=0)
-    make_plots(lr.losses, lr.train_accuracies, axs, row=0)
-    #print(f"test accuracy GD: {accuracy}")
-    print(f"test accuracy Newton: {accuracy2}")
+    fig, axs = plt.subplots(1, 3)
+    make_plots(lr.losses, lr.train_accuracies, lr.grad_norm, axs, row=0)
     plt.show()
