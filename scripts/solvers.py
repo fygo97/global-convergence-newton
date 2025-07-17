@@ -8,12 +8,65 @@ class Solvers:
         self.hess = hess
     # Requirement: hess (i.e. H) L-Lipschitz
     # Regularization factor: lambda_k = sqrt(H * ||∇f(x_k)||)
+
+    import numpy as np
+
+    """
+    Implements Algorithm 2.1(Adaptive Newton / AdaN).
+    Inputs:
+        x0  - initial point (numpy array)
+        func - function f(x)
+        grad - gradient ∇f(x)
+        hess - Hessian ∇²f(x)
+        H0   - initial regularization parameter
+        max_outer_iters - number of outer Newton iterations
+        line_search_factor - multiplier for increasing H
+        tol  - stopping tolerance for gradient norm
+    Returns:
+        history of iterates [x0, x1, ..., xk]
+    """
+    def AdaN(self, weights_0, H0,X,y,batch_size):
+        global AdaN_k, AdaN_Hk
+        weights_k = weights_0.copy()
+        k=0
+        d = len(weights_k)
+        while True: #"for k = 0,1,... do" <=> line 2
+            if k == 0:
+                Hk = H0
+            else:
+                Hk = Hk/4
+
+            grad_norm_k = np.linalg.norm(self.loss_function.grad(weights_k,X,y))
+            hessian_k = grad_norm_k = np.linalg.norm(self.loss_function.hessian(weights_k,X,y))
+            while True: #"repeat" <=> line 4
+                Hk = 2*Hk #line 5
+                lambda_k = np.sqrt(Hk*grad_norm_k) #line 7 (line 6 is pointless)
+
+                #define weights_plus <=> line 8--------
+                reg_hessian_k = hessian_k + lambda_k*np.eye(d)
+                p = np.linalg.solve(reg_hessian_k,grad_norm_k)
+                weights_plus = weights_k - p
+                #--------------------------------------
+
+                r_plus = np.linalg.norm(weights_plus - weights_k)# <=> line 9
+
+
+                # line 10 
+                grad_norm_plus = np.linalg.norm(self.loss_function.grad(weights_plus,X,y))
+                loss_weights_plus = self.loss_function.loss(weights_plus,X,y)
+                loss_weights_k = self.loss_function.loss(weights_k,X,y)
+                if ((grad_norm_plus <= 2* lambda_k * r_plus) and loss_weights_plus <= loss_weights_k -2/3 *lambda_k*r_plus**2 ):
+                    weights_k = weights_plus
+                    k += 1
+                    break
+        return weights_k
+
+
+
+
     def mishchenko(self, x0, H_param=None, max_iter=100, tol=1e-6):
         """
-        Mishchenko Newton-type method with affine-invariant scaling and cubic regularization.
-        Reference: K. Mishchenko, "A Newton-type method with cubic regularization and affine-invariant scaling," 2022.
-        https://arxiv.org/abs/2206.01575
-
+        Mishchenko2023
         @param x0: Initial point (numpy array)
         @param H_param: Positive constant H for scaling (float, default 0.1)
         @param max_iter: Maximum number of iterations
@@ -29,8 +82,8 @@ class Solvers:
             H_param = 0.1
         x = x0.copy()
         for _ in range(max_iter):
-            g = self.grad(x)
-            grad_norm = np.linalg.norm(g)
+            grad = self.grad(x)
+            grad_norm = np.linalg.norm(grad)
             if grad_norm < tol:
                 break
 
@@ -39,9 +92,9 @@ class Solvers:
             reg_Hk = Hk + lambda_k * np.eye(len(x))
 
             try:
-                p = np.linalg.solve(reg_Hk, g)
+                p = np.linalg.solve(reg_Hk, grad)
             except np.linalg.LinAlgError:
-                p = np.linalg.lstsq(reg_Hk, g, rcond=None)[0]
+                p = np.linalg.lstsq(reg_Hk, grad, rcond=None)[0]
 
             x = x - p
 
@@ -70,7 +123,7 @@ class Solvers:
             g = self.grad(x)
             H = self.hess(x)
             g_norm = np.sqrt(g @ np.linalg.solve(H, g))
-            alpha = (-1 + np.sqrt(1 + 2 * L_est * g_norm)) / (L_est * g_norm + 1e-12)
+            alpha = (-1 + np.sqrt(1 + 2 * L_est * g_norm)) / (L_est * g_norm)
             s = np.linalg.solve(H, g)
             x_new = x - alpha * s
             xs.append(x_new.copy())

@@ -171,7 +171,7 @@ def perform_train_run(dataset, loss_t, method, epochs):
         y_test = y_test * 2 - 1
 
     lr = MultivarLogReg(method=method, loss_type=loss_type)
-    lr.fit(X_train, y_train, epochs=epochs, lr=1, batch_size=2048, lbd=1e-9)
+    lr.fit(X_train, y_train, epochs=epochs, lr=1, batch_size=2048, lbd=0)
     print("Training complete")
 
     pred = lr.predict(X_test)
@@ -199,4 +199,3 @@ if __name__ == '__main__':
     fig, axs = plt.subplots(1, 3)
     make_plots(lr.losses, lr.train_accuracies, lr.grad_norm, axs, row=0)
     plt.show()
-
