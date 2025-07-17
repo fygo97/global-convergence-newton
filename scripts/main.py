@@ -150,6 +150,8 @@ def perform_train_run(dataset, loss_t, method, epochs):
             method = Method.AICN
         case "adan":
             method = Method.ADAN
+        case "adanp":
+            method = Method.ADANP
 
 
     print(f"number of samples = {len(y_train)}")
@@ -187,7 +189,7 @@ if __name__ == '__main__':
                         help="Dataset to use (a9a, covtype, ijcnn1, mnist)")
     parser.add_argument("loss", type=str, choices=["ce", "ncce"], 
                         help="Loss function to use (ce, ncce)")
-    parser.add_argument("method", type=str, choices=["gd", "newton", "grn", "aicn", "adan"], 
+    parser.add_argument("method", type=str, choices=["gd", "newton", "grn", "aicn", "adan", "adanp"], 
                         help="method to use (gd, newton, m22, cubic, adan)")
     args = parser.parse_args()
 

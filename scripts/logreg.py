@@ -24,6 +24,7 @@ class MultivarLogReg():
         self.grad_norm = []
         self.criterion_reached = -1
         self.time_to_convergence = 0
+        
 
 
     def fit(self, x, y, epochs, lr = 1, batch_size = None, lbd = 0, alpha = 1.0, mu=0.001, H_adan_0 = 0.1, epsilon = 1e-8):
@@ -55,6 +56,22 @@ class MultivarLogReg():
 
         logger.info(f"single weights shape = {weights.shape}")
 
+        weights_new = None
+        weights_old = None
+        _H_old = None
+
+        if self.method == Method.ADANP:
+            self.weights_new = weights + np.random.randn(*weights.shape) * 0.01
+            self.weights_old = weights
+
+            g_new = self.loss_function.grad(self.weights_new, x, y)
+            g_old = self.loss_function.grad(self.weights_old, x, y)
+            _Hessian_old = self.loss_function.hessian(self.weights_old, x, y)
+            diff = self.weights_new - self.weights_old
+            p = _Hessian_old @ diff
+            _H_old = np.linalg.norm(g_new - g_old - p) / (np.linalg.norm(diff)**2)
+
+
         for epoch in trange(epochs, desc="Training Epochs"):
 
             # Batch loop: Allows epochs to be split into batches. we do not split @fynn) Only performs one iteration when batch_size is chosen as None 
@@ -73,6 +90,9 @@ class MultivarLogReg():
                     weights = self.perform_AICN_update_step(weights, x_batch, y_batch, L_est=10)
                 elif self.method == Method.ADAN:
                     weights, H_adan = self.perform_ADAN_update_step(weights, x_batch, y_batch, _H = H_adan)
+                elif self.method == Method.ADANP:
+                    self.weights_new, self.weights_old, _H_old = self.perform_ADANP_update_step(self.weights_new, self.weights_old, x, y, _H_old)
+                    weights = self.weights_new
 
             # Evaluate full-batch performance after epoch
             self.losses.append(self.loss_function.loss(weights, x, y))
@@ -164,6 +184,22 @@ class MultivarLogReg():
         print(alpha)
         weights = weights - alpha * p
         return weights
+
+    def perform_ADANP_update_step(self, weights_old, weights_new, x, y, _H_old):
+        assert(self.loss_function != None)
+        g_new = self.loss_function.grad(weights_new, x, y)
+        g_old = self.loss_function.grad(weights_old, x, y)
+        _Hessian_new = self.loss_function.hessian(weights_new, x, y)
+        _Hessian_old = self.loss_function.hessian(weights_old, x, y)
+        d = len(weights_new)
+        diff = weights_new - weights_old
+        p = _Hessian_old @ diff
+        _M_k = np.linalg.norm(g_new - g_old - p) / (np.linalg.norm(diff)**2)
+        _H_new = np.maximum(_M_k, _H_old / 2)
+        _lambda_new = np.sqrt(_H_new * np.linalg.norm(g_new))
+        s = np.linalg.solve(_Hessian_new + _lambda_new * np.eye(d), g_new)
+        weights_new_new = weights_new - s
+        return weights_new_new, weights_new, _H_new
 
 
     def predict(self, x):
