@@ -22,23 +22,17 @@ logging.basicConfig(
 
 
 def make_plots(losses, accuracies, grad_norm, axs, row=0): 
-    for i, loss in enumerate(losses):
-        axs[0].plot(loss, label=f"{i}")
-
-    axs[0].set_xlabel("epochs")
+    axs[0].plot(losses)
     axs[0].set_ylabel("loss")
-    axs[0].legend()
-    
+    axs[0].set_xlabel("epochs")
+
     axs[2].plot(accuracies)
     axs[2].set_xlabel("epochs")
     axs[2].set_ylabel("accuracy")
 
-    for i, gn in enumerate(grad_norm):
-        axs[1].plot(gn, label=f"{i}")
-
+    axs[1].plot(grad_norm)
     axs[1].set_xlabel("epochs")
     axs[1].set_ylabel("grad_norm")
-    axs[1].legend()
 
 def download_and_preprocess_a9a():
 
@@ -102,7 +96,7 @@ def download_and_preprocess_ijcnn1():
 
     # Load data
     X_train, y_train = load_svmlight_file("ijcnn1")
-    X_train = X_train.toarray
+    X_train = X_train.toarray()
     X_train, X_test, y_train, y_test = train_test_split(X_train, y_train, test_size=0.25)
 
     X_train = np.array(X_train).astype(np.float32)
@@ -121,6 +115,8 @@ def download_and_preprocess_mnist():
     # Load data
     X_train, y_train = load_svmlight_file("mnist.scale")
     X_train = X_train.toarray()
+    y_train = np.array([y_i % 2 == 0 for y_i in y_train])
+
     X_train, X_test, y_train, y_test = train_test_split(X_train, y_train, test_size=0.25)
 
     X_train = np.array(X_train).astype(np.float32)
@@ -148,10 +144,10 @@ def perform_train_run(dataset, loss_t, method, epochs):
             method = Method.GD
         case "newton":
             method = Method.NEWTON
-        case "m22":
-            method = Method.M22
-        case "cubic":
-            method = Method.CUBIC
+        case "grn":
+            method = Method.GRN
+        case "aicn":
+            method = Method.AICN
 
 
     print(f"number of samples = {len(y_train)}")
@@ -171,15 +167,15 @@ def perform_train_run(dataset, loss_t, method, epochs):
         y_test = y_test * 2 - 1
 
     lr = MultivarLogReg(method=method, loss_type=loss_type)
-    lr.fit(X_train, y_train, epochs=epochs, lr=1, batch_size=2048, lbd=0)
+    lr.fit(X_train, y_train, epochs=epochs, lr=1, batch_size=None, lbd=0)
     print("Training complete")
 
     pred = lr.predict(X_test)
-    accuracy2 = accuracy_score(y_test, pred)
+    accuracy = accuracy_score(y_test, pred)
 
-    print(f"Test accuracy: {accuracy2}")
+    print(f"Test accuracy: {accuracy}")
 
-    return lr
+    return lr, accuracy
 
 
 if __name__ == '__main__':
@@ -189,11 +185,13 @@ if __name__ == '__main__':
                         help="Dataset to use (a9a, covtype, ijcnn1, mnist)")
     parser.add_argument("loss", type=str, choices=["ce", "ncce"], 
                         help="Loss function to use (ce, ncce)")
-    parser.add_argument("method", type=str, choices=["gd", "newton", "m22", "cubic"], 
-                        help="method to use (gd, newton, m22, cubic)")
+    parser.add_argument("method", type=str, choices=["gd", "newton", "grn", "aicn", "adan"], 
+                        help="method to use (gd, newton, m22, cubic, adan)")
     args = parser.parse_args()
 
-    lr = perform_train_run(args.dataset, args.loss, args.method, 10)
+    lr, accuracy = perform_train_run(args.dataset, args.loss, args.method, 10)
+
+    print(f"time to convergence = {lr.time_to_convergence}")
 
     # Plotting
     fig, axs = plt.subplots(1, 3)

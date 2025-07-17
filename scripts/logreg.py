@@ -7,6 +7,7 @@ from methods import Method, LossFunction
 from scipy.special import expit
 from tqdm import trange
 from loss import CELoss, NCCELoss
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -21,17 +22,25 @@ class MultivarLogReg():
         self.loss_function = None
         self.num_classes = num_classes
         self.grad_norm = []
+        self.criterion_reached = -1
+        self.time_to_convergence = 0
 
-    def fit(self, x, y, epochs, lr = 1, batch_size = None, lbd = 0, alpha = 1.0, mu=0.001):
 
-        ones = np.ones(x.shape[0]).reshape((-1, 1))
-        x = np.hstack([ones, x])  # Add bias column
+    def fit(self, x, y, epochs, lr = 1, batch_size = None, lbd = 0, alpha = 1.0, mu=0.001, H_adan = 0.1, epsilon = 1e-8):
+
+        # ones = np.ones(x.shape[0]).reshape((-1, 1))
+        # x = np.hstack([ones, x])  # Add bias column
+
+        start_time = time.time()
+
+        H_adan = 4 * H_adan
 
         batch_size = x.shape[0] if batch_size == None else 2048
 
         self.classes_ = np.unique(y)
         num_classes = len(self.classes_)
-        self.weights = np.random.rand(num_classes, x.shape[1]) * 5
+        self.weights = np.ones(x.shape[1]) * 0.1
+        self.train_accuracies.append(accuracy_score(y_true=y, y_pred=self.predict(x)))
         logger.info(f"full weights shape = {self.weights.shape}")
 
         n_samples = x.shape[0]
@@ -40,59 +49,45 @@ class MultivarLogReg():
             self.loss_function = CELoss()
         else:
             self.loss_function = NCCELoss(lambda_=mu,alpha=alpha)
+            y = y * 2 - 1
 
+        weights = np.random.randn(x.shape[1]) * 0.1
 
-        for class_idx, cls in enumerate(self.classes_):
-            binary_y = (y == cls).astype(np.float32)
-            if self.loss_type == LossFunction.NCCE:
-                binary_y = binary_y * 2 - 1
+        logger.info(f"single weights shape = {weights.shape}")
 
-            weights = np.random.rand(x.shape[1]) * 0.1
+        for epoch in trange(epochs, desc="Training Epochs"):
 
-            logger.info(f"single weights shape = {weights.shape}")
+            # Batch loop: Allows epochs to be split into batches. we do not split @fynn) Only performs one iteration when batch_size is chosen as None 
+            for start in range(0, n_samples, batch_size):
+                end = min(start + batch_size, n_samples)
+                x_batch = x[start:end]
+                y_batch = y[start:end]
 
-            per_class_loss = []
-            per_class_grad_norm = []
+                if self.method == Method.GD:
+                    weights = self.perform_GD_update_step(weights, x_batch, y_batch, lr / (epoch + 1))  # decreasing step size
+                elif self.method == Method.NEWTON:
+                    weights = self.perform_Newton_update_step(weights, x_batch, y_batch, lr, lbd=lbd)
+                elif self.method == Method.GRN:
+                    weights = self.perform_GRN_update_step(weights, x_batch, y_batch, lbd=lbd)
+                elif self.method == Method.AICN:
+                    weights = self.perform_AICN_update_step(weights, x_batch, y_batch, L_est=10)
+                elif self.method == Method.ADAN:
+                    weights, _H = self.perform_ADAN_update_step(weights, x_batch, y_batch, _H = H_adan)
 
-            for epoch in trange(epochs, desc="Training Epochs"):
-                # Shuffle indices
-                indices = np.arange(n_samples)
-                np.random.shuffle(indices)
+            # Evaluate full-batch performance after epoch
+            self.losses.append(self.loss_function.loss(weights, x, y))
+            self.grad_norm.append(np.linalg.norm(self.loss_function.grad(weights, x, y)))
 
-                x_shuffled = x[indices]
-                y_shuffled = binary_y[indices]
+            if (np.linalg.norm(self.loss_function.grad(weights, x, y), ord=np.inf) and self.criterion_reached == -1 < epsilon):
+                self.criterion_reached = epoch
+                stop_time = time.time()
+                self.time_to_convergence = stop_time - start_time
 
-                done = False
+            self.weights = weights
+            self.train_accuracies.append(accuracy_score(y_true=y, y_pred=self.predict(x)))
 
-                for start in range(0, n_samples, batch_size):
-                    end = min(start + batch_size, n_samples)
-                    x_batch = x_shuffled[start:end]
-                    y_batch = y_shuffled[start:end]
+            print(f"y = {y}, prediction = {self.predict(x)}")
 
-                    if self.method == Method.GD:
-                        weights = self.perform_GD_update_step(weights, x_batch, y_batch, lr / (epoch + 1))  # decreasing step size
-                    elif self.method == Method.NEWTON:
-                        weights = self.perform_Newton_update_step(weights, x_batch, y_batch, lr, lbd=lbd)
-                    elif self.method == Method.M22:
-                        weights = self.perform_Mishchenko22_update_step(weights, x_batch, y_batch, lbd=lbd)
-                    elif self.method == Method.CUBIC:
-                        weights = self.perform_Cubic_update_step(weights, x_batch, y_batch, lbd=lbd, L_est=10)
-
-                    if done:
-                        break
-
-                # Evaluate full-batch performance after epoch
-                per_class_loss.append(self.loss_function.loss(weights, x_shuffled, y_shuffled))
-                per_class_grad_norm.append(np.linalg.norm(self.loss_function.grad(weights, x, y)))
-
-                self.train_accuracies.append(accuracy_score(y_true=y, y_pred=self.predict(x, bias=False)))
-
-                if done:
-                    break
-
-            self.weights[class_idx] = weights
-            self.losses.append(per_class_loss)
-            self.grad_norm.append(per_class_grad_norm)
 
 
     def perform_GD_update_step(self, weights, x, y, lr):
@@ -110,43 +105,39 @@ class MultivarLogReg():
         weights = weights - lr * np.matmul(H_inv, error_w)
         return weights
     
-    def AdaN(self, weights_0, H0,X,y,batch_size):
+    def perform_ADAN_update_step(self, weights_0, x, y, _H):
+        assert(self.loss_function != None)
         global AdaN_k, AdaN_Hk
         weights_k = weights_0.copy()
         k=0
         d = len(weights_k)
-        while True: #"for k = 0,1,... do" <=> line 2
-            if k == 0:
-                Hk = H0
-            else:
-                Hk = Hk/4
+        _H = _H / 4
 
-            grad_norm_k = np.linalg.norm(self.loss_function.grad(weights_k,X,y))
-            hessian_k = grad_norm_k = np.linalg.norm(self.loss_function.hessian(weights_k,X,y))
-            while True: #"repeat" <=> line 4
-                Hk = 2*Hk #line 5
-                lambda_k = np.sqrt(Hk*grad_norm_k) #line 7 (line 6 is pointless)
+        grad_norm_k = np.linalg.norm(self.loss_function.grad(weights_k,x,y))
+        hessian_k = grad_norm_k = np.linalg.norm(self.loss_function.hessian(weights_k,x,y))
+        while True:
+            _H = 2*_H #line 5
+            lambda_k = np.sqrt(_H*grad_norm_k) #line 7 (line 6 is pointless)
 
-                #define weights_plus <=> line 8--------
-                reg_hessian_k = hessian_k + lambda_k*np.eye(d)
-                p = np.linalg.solve(reg_hessian_k,grad_norm_k)
-                weights_plus = weights_k - p
-                #--------------------------------------
+            #define weights_plus <=> line 8--------
+            reg_hessian_k = hessian_k + lambda_k*np.eye(d)
+            p = np.linalg.solve(reg_hessian_k,grad_norm_k)
+            weights_plus = weights_k - p
+            #--------------------------------------
 
-                r_plus = np.linalg.norm(weights_plus - weights_k)# <=> line 9
+            r_plus = np.linalg.norm(weights_plus - weights_k)# <=> line 9
 
+            # line 10 
+            grad_norm_plus = np.linalg.norm(self.loss_function.grad(weights_plus,x,y))
+            loss_weights_plus = self.loss_function.loss(weights_plus,x,y)
+            loss_weights_k = self.loss_function.loss(weights_k,x,y)
+            if ((grad_norm_plus <= 2* lambda_k * r_plus) and loss_weights_plus <= loss_weights_k -2/3 *lambda_k*r_plus**2 ):
+                break
 
-                # line 10 
-                grad_norm_plus = np.linalg.norm(self.loss_function.grad(weights_plus,X,y))
-                loss_weights_plus = self.loss_function.loss(weights_plus,X,y)
-                loss_weights_k = self.loss_function.loss(weights_k,X,y)
-                if ((grad_norm_plus <= 2* lambda_k * r_plus) and loss_weights_plus <= loss_weights_k -2/3 *lambda_k*r_plus**2 ):
-                    weights_k = weights_plus
-                    k += 1
-                    break
+        weights_k = weights_plus
         return weights_k
 
-    def perform_Mishchenko22_update_step(self, weights, x, y, lbd, H_param = 0.1 ):
+    def perform_GRN_update_step(self, weights, x, y, lbd, H_param = 0.1 ):
         assert(self.loss_function != None)
         g = self.loss_function.grad(weights, x, y) + lbd * weights
         grad_norm = np.linalg.norm(g)
@@ -162,24 +153,24 @@ class MultivarLogReg():
         weights = weights - p
         return weights
 
-    def perform_Cubic_update_step(self, weights, x, y, L_est, lbd):
+    def perform_AICN_update_step(self, weights, x, y, L_est):
         assert(self.loss_function != None)
         g = self.loss_function.grad(weights, x, y)
         H = self.loss_function.hessian(weights, x, y)
-        g_norm = np.sqrt(g @ np.linalg.solve(H, g))
-        alpha = (-1 + np.sqrt(1 + 2 * L_est * g_norm)) / (L_est * g_norm)
-        s = np.linalg.solve(H, g)
-        weights = weights - alpha * s
+        p = np.linalg.solve(H, g)
+        _G = L_est * (g @ p)
+        alpha = (-1 + np.sqrt(1 + 2 * _G)) / _G
+        print(alpha)
+        weights = weights - alpha * p
         return weights
 
 
-    def predict(self, x, bias = True):
-        """
-            bias should be true if bias column should be added
-        """
-        if bias:
-            ones = np.ones((x.shape[0], 1))
-            x = np.hstack([ones, x])
-        logits = np.matmul(x, self.weights.T)        # shape: (n_samples, num_classes)
+    def predict(self, x):
+        '''
+            Returns a class label prediction.
+            Applies expit to X*w elmentwise and derives a label prediction for accuracy plot.
+        '''
+        logits = x @ self.weights        # shape: (n_samples, num_classes)
         probs = expit(logits)
-        return self.classes_[np.argmax(probs, axis=1)]
+        prediction = np.array([1 if p > 0.5 else 0 for p in probs])
+        return prediction

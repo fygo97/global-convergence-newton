@@ -5,12 +5,12 @@ singeps=1e-5
 
 class CELoss:
     def loss(self, weights, x, y):
-        probs = expit(x @ weights)
-        loss = -np.mean(y * np.log(probs + 1e-12) + (1 - y) * np.log(1 - probs + 1e-12))
+        probs = expit(x @ weights) # applies sigmoid (= expit) function elementwise to x*w 
+        loss = -np.mean(y * np.log(probs) + (1 - y) * np.log(1 - probs))
         return loss
 
     def grad(self, weights, x, y):
-        probs = expit(x @ weights.T)
+        probs = expit(x @ weights)
         grad = (x.T @ (probs - y)) / len(y)
         return grad
 
