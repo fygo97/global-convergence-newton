@@ -148,6 +148,8 @@ def perform_train_run(dataset, loss_t, method, epochs):
             method = Method.GRN
         case "aicn":
             method = Method.AICN
+        case "adan":
+            method = Method.ADAN
 
 
     print(f"number of samples = {len(y_train)}")
@@ -167,7 +169,7 @@ def perform_train_run(dataset, loss_t, method, epochs):
         y_test = y_test * 2 - 1
 
     lr = MultivarLogReg(method=method, loss_type=loss_type)
-    lr.fit(X_train, y_train, epochs=epochs, lr=1, batch_size=None, lbd=0)
+    lr.fit(X_train, y_train, epochs=epochs, lr=1, batch_size=None, lbd=0, epsilon=1e-3)
     print("Training complete")
 
     pred = lr.predict(X_test)

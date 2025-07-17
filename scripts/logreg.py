@@ -26,14 +26,14 @@ class MultivarLogReg():
         self.time_to_convergence = 0
 
 
-    def fit(self, x, y, epochs, lr = 1, batch_size = None, lbd = 0, alpha = 1.0, mu=0.001, H_adan = 0.1, epsilon = 1e-8):
+    def fit(self, x, y, epochs, lr = 1, batch_size = None, lbd = 0, alpha = 1.0, mu=0.001, H_adan_0 = 0.1, epsilon = 1e-8):
 
         # ones = np.ones(x.shape[0]).reshape((-1, 1))
         # x = np.hstack([ones, x])  # Add bias column
 
         start_time = time.time()
 
-        H_adan = 4 * H_adan
+        H_adan = 4 * H_adan_0
 
         batch_size = x.shape[0] if batch_size == None else 2048
 
@@ -72,13 +72,13 @@ class MultivarLogReg():
                 elif self.method == Method.AICN:
                     weights = self.perform_AICN_update_step(weights, x_batch, y_batch, L_est=10)
                 elif self.method == Method.ADAN:
-                    weights, _H = self.perform_ADAN_update_step(weights, x_batch, y_batch, _H = H_adan)
+                    weights, H_adan = self.perform_ADAN_update_step(weights, x_batch, y_batch, _H = H_adan)
 
             # Evaluate full-batch performance after epoch
             self.losses.append(self.loss_function.loss(weights, x, y))
             self.grad_norm.append(np.linalg.norm(self.loss_function.grad(weights, x, y)))
 
-            if (np.linalg.norm(self.loss_function.grad(weights, x, y), ord=np.inf) and self.criterion_reached == -1 < epsilon):
+            if (np.linalg.norm(self.loss_function.grad(weights, x, y), ord=np.inf) < epsilon and self.criterion_reached == -1):
                 self.criterion_reached = epoch
                 stop_time = time.time()
                 self.time_to_convergence = stop_time - start_time
@@ -107,21 +107,22 @@ class MultivarLogReg():
     
     def perform_ADAN_update_step(self, weights_0, x, y, _H):
         assert(self.loss_function != None)
-        global AdaN_k, AdaN_Hk
         weights_k = weights_0.copy()
-        k=0
         d = len(weights_k)
         _H = _H / 4
 
         grad_norm_k = np.linalg.norm(self.loss_function.grad(weights_k,x,y))
-        hessian_k = grad_norm_k = np.linalg.norm(self.loss_function.hessian(weights_k,x,y))
+        hessian_k = self.loss_function.hessian(weights_k,x,y)
+        g = self.loss_function.grad(weights_k, x, y)
+
         while True:
-            _H = 2*_H #line 5
+
+            _H = 2 *_H #line 5
             lambda_k = np.sqrt(_H*grad_norm_k) #line 7 (line 6 is pointless)
 
             #define weights_plus <=> line 8--------
-            reg_hessian_k = hessian_k + lambda_k*np.eye(d)
-            p = np.linalg.solve(reg_hessian_k,grad_norm_k)
+            reg_hessian_k = hessian_k + lambda_k * np.eye(d)
+            p = np.linalg.solve(reg_hessian_k, g)
             weights_plus = weights_k - p
             #--------------------------------------
 
@@ -131,11 +132,11 @@ class MultivarLogReg():
             grad_norm_plus = np.linalg.norm(self.loss_function.grad(weights_plus,x,y))
             loss_weights_plus = self.loss_function.loss(weights_plus,x,y)
             loss_weights_k = self.loss_function.loss(weights_k,x,y)
-            if ((grad_norm_plus <= 2* lambda_k * r_plus) and loss_weights_plus <= loss_weights_k -2/3 *lambda_k*r_plus**2 ):
+            if ((grad_norm_plus <= 2 * lambda_k * r_plus) and loss_weights_plus <= (loss_weights_k - (2.0 / 3.0) * lambda_k * r_plus**2) ):
+                weights_k = weights_plus
                 break
 
-        weights_k = weights_plus
-        return weights_k
+        return weights_k, _H
 
     def perform_GRN_update_step(self, weights, x, y, lbd, H_param = 0.1 ):
         assert(self.loss_function != None)
