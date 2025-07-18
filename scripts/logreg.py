@@ -28,7 +28,7 @@ class MultivarLogReg():
         self.weights_old = None
         
 
-    def fit(self, x, y, epochs, lr=1, batch_size=None, lbd=0, alpha=1.0, mu=0.001,
+    def fit(self, x, y, epochs, lr=1, initial_weights=None, batch_size=None, lbd=0, alpha=1.0, mu=0.001,
         H_adan_0=0.1, epsilon=1e-6):
 
 
