@@ -1,22 +1,24 @@
 import numpy as np
 from scipy.special import expit
 
+singeps=1e-5
+
 class CELoss:
     def loss(self, weights, x, y):
-        probs = expit(x @ weights)
-        loss = -np.mean(y * np.log(probs + 1e-12) + (1 - y) * np.log(1 - probs + 1e-12))
+        probs = expit(x @ weights) # applies sigmoid (= expit) function elementwise to x*w 
+        loss = -np.mean(y * np.log(probs) + (1 - y) * np.log(1 - probs))
         return loss
 
     def grad(self, weights, x, y):
-        probs = expit(x @ weights.T)
+        probs = expit(x @ weights)
         grad = (x.T @ (probs - y)) / len(y)
         return grad
 
     def hessian(self, weights, x, y):
         probs = expit(x @ weights)
         D_diag = probs * (1 - probs)
-        D = np.diag(D_diag)
-        hess = (x.T @ D @ x) / len(y)
+        X_weighted = x * D_diag[:, np.newaxis]
+        hess = (x.T @ X_weighted) / len(y)
         return hess
 
 class NCCELoss:
@@ -41,8 +43,10 @@ class NCCELoss:
         z = x @ weights
         sigma = expit(-y * z)
         W_diag = sigma * (1 - sigma)
-        W = np.diag(W_diag)
-        f = (x.T @ W @ x) / len(y)
+        X_weighted = x * W_diag[:, np.newaxis]
+        f = (x.T @ X_weighted) / len(y)
+
         r_diag = 2 * self.lambda_ * self.alpha * (1 - 3 * self.alpha * weights**2) / (1 + self.alpha * weights**2)**3
         r = np.diag(r_diag)
+
         return f + r
