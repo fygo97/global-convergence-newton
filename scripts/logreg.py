@@ -61,15 +61,16 @@ class MultivarLogReg():
         _H_old = None
 
         if self.method == Method.ADANP:
-            self.weights_new = weights + np.random.randn(*weights.shape) * 0.01
-            self.weights_old = weights
-
+            self.weights_new = weights + np.random.randn(*weights.shape) * 2
+            self.weights_old = weights + np.random.randn(*weights.shape) * 2
             g_new = self.loss_function.grad(self.weights_new, x, y)
             g_old = self.loss_function.grad(self.weights_old, x, y)
             _Hessian_old = self.loss_function.hessian(self.weights_old, x, y)
             diff = self.weights_new - self.weights_old
             p = _Hessian_old @ diff
             _H_old = np.linalg.norm(g_new - g_old - p) / (np.linalg.norm(diff)**2)
+
+        sigma_k = 0.1
 
 
         for epoch in trange(epochs, desc="Training Epochs"):
@@ -91,8 +92,10 @@ class MultivarLogReg():
                 elif self.method == Method.ADAN:
                     weights, H_adan = self.perform_ADAN_update_step(weights, x_batch, y_batch, _H = H_adan)
                 elif self.method == Method.ADANP:
-                    self.weights_new, self.weights_old, _H_old = self.perform_ADANP_update_step(self.weights_new, self.weights_old, x, y, _H_old)
+                    self.weights_new, self.weights_old, _H_old = self.perform_ADANP_update_step(self.weights_old, self.weights_new, x, y, _H_old)
                     weights = self.weights_new
+                elif self.method == Method.CREG:
+                    weights, sigma_k = self.perform_CREG_update_step(weights, x, y, sigma_k=sigma_k)
 
             # Evaluate full-batch performance after epoch
             self.losses.append(self.loss_function.loss(weights, x, y))
@@ -195,12 +198,85 @@ class MultivarLogReg():
         diff = weights_new - weights_old
         p = _Hessian_old @ diff
         _M_k = np.linalg.norm(g_new - g_old - p) / (np.linalg.norm(diff)**2)
+        print(f"M_k = {_M_k}")
         _H_new = np.maximum(_M_k, _H_old / 2)
         _lambda_new = np.sqrt(_H_new * np.linalg.norm(g_new))
         s = np.linalg.solve(_Hessian_new + _lambda_new * np.eye(d), g_new)
         weights_new_new = weights_new - s
         return weights_new_new, weights_new, _H_new
 
+    def perform_CREG_update_step(self, weights, x, y, 
+                                sigma_k=1.0, 
+                                eta_1=0.1, eta_2=0.9,
+                                gamma_1=2.0, gamma_2=4.0,
+                                max_cauchy_search=50):
+        """
+        Performs one Adaptive Regularization with Cubics (ARC) step.
+
+        Args:
+            x_k (np.ndarray): Current point (weights).
+            x (np.ndarray): Training data.
+            y (np.ndarray): Labels.
+            sigma_k (float): Regularization parameter.
+            eta_1, eta_2 (float): Acceptance thresholds.
+            gamma_1, gamma_2 (float): Factors for sigma update.
+            max_cauchy_search (int): Max iterations to estimate α^C.
+
+        Returns:
+            x_{k+1} (np.ndarray): Updated weights.
+            sigma_{k+1} (float): Updated regularization parameter.
+        """
+        assert self.loss_function is not None
+        g_k = self.loss_function.grad(weights, x, y)
+        H_k = self.loss_function.hessian(weights, x, y)
+        
+        d = g_k.shape[0]
+
+        # --- Step 1: Compute Cauchy point s_k^C = -alpha^C * g_k ---
+        def m_k(s):
+            return g_k @ s + 0.5 * s @ H_k @ s + (sigma_k / 6) * np.linalg.norm(s)**3
+
+        # Approximate argmin over α of m_k(-α g_k)
+        alpha_vals = np.logspace(-4, 2, max_cauchy_search)
+        min_val = float("inf")
+        alpha_c = 0
+        for alpha in alpha_vals:
+            s_cand = -alpha * g_k
+            val = m_k(s_cand)
+            if val < min_val:
+                min_val = val
+                alpha_c = alpha
+
+        s_c_k = -alpha_c * g_k
+        m_c_k = m_k(s_c_k)
+
+        # --- Step 1 cont: Find any step s_k such that m_k(s_k) ≤ m_k(s_c_k) ---
+        # For simplicity, we use s_k = s_c_k in this implementation
+        s_k = s_c_k
+        m_s_k = m_k(s_k)
+
+        # --- Step 2: Compute actual improvement and ρ_k ---
+        f_k = self.loss_function.loss(weights, x, y)
+        f_new = self.loss_function.loss(weights + s_k, x, y)
+        actual_reduction = f_k - f_new
+        predicted_reduction = f_k - m_s_k
+        rho_k = actual_reduction / predicted_reduction if predicted_reduction != 0 else 0
+
+        # --- Step 3: Accept or reject step ---
+        if rho_k >= eta_1:
+            x_k_plus1 = weights + s_k
+        else:
+            x_k_plus1 = weights
+
+        # --- Step 4: Update σ_k ---
+        if rho_k > eta_2:
+            sigma_k_plus1 = np.random.uniform(0, sigma_k)
+        elif eta_1 <= rho_k <= eta_2:
+            sigma_k_plus1 = np.random.uniform(sigma_k, gamma_1 * sigma_k)
+        else:
+            sigma_k_plus1 = np.random.uniform(gamma_1 * sigma_k, gamma_2 * sigma_k)
+
+        return x_k_plus1, sigma_k_plus1
 
     def predict(self, x):
         '''

@@ -7,6 +7,7 @@ class Method(Enum):
     AICN = 4 # Affine Invariant Cubinc Newton Algo 1 p. 6 Henzley 2022
     ADAN = 5 # Adaptive Newton Algo 2.1 Mishchenko 2023
     ADANP = 6 # Adaptive Newton Plus Algo 2.3 Mishchenko 2023
+    CREG = 7 # 
 
 
 class LossFunction(Enum):
