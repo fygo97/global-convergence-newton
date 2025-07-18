@@ -1,3 +1,4 @@
+import time
 import logging
 import numpy as np
 import requests
@@ -189,8 +190,15 @@ if __name__ == '__main__':
     X_train, X_test, y_train, y_test, loss_type, method = setup(args.dataset, args.loss, args.method)
 
     lr = MultivarLogReg(method=method, loss_type=loss_type)
-    lr.fit(X_train, y_train, epochs=10, batch_size=None)
+
+    
+    start_time = time.time() #start timer 
+    lr.fit(X_train, y_train, epochs=50, batch_size=None)
+    end_time = time.time() #stop timer 
+
     print("Training complete")
+    total_time = end_time - start_time
+    print(f"Total training time: {total_time:.6f} seconds")
 
     pred = lr.predict(X_test)
     accuracy = accuracy_score(y_test, pred)
