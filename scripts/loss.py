@@ -17,10 +17,8 @@ class CELoss:
     def hessian(self, weights, x, y):
         probs = expit(x @ weights)
         D_diag = probs * (1 - probs)
-        D = np.diag(D_diag)
-        hess = (x.T @ D @ x) / len(y)
-        # if(abs(np.linalg.det(hess))<singeps):
-            # print("Singular Hessian")
+        X_weighted = x * D_diag[:, np.newaxis]
+        hess = (x.T @ X_weighted) / len(y)
         return hess
 
 class NCCELoss:
@@ -45,10 +43,10 @@ class NCCELoss:
         z = x @ weights
         sigma = expit(-y * z)
         W_diag = sigma * (1 - sigma)
-        W = np.diag(W_diag)
-        f = (x.T @ W @ x) / len(y)
+        X_weighted = x * W_diag[:, np.newaxis]
+        f = (x.T @ X_weighted) / len(y)
+
         r_diag = 2 * self.lambda_ * self.alpha * (1 - 3 * self.alpha * weights**2) / (1 + self.alpha * weights**2)**3
         r = np.diag(r_diag)
-        # if(abs(np.linalg.det(f + r))<singeps):
-            # print("Singular Hessian")
+
         return f + r
