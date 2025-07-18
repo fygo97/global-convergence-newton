@@ -112,8 +112,6 @@ class MultivarLogReg():
             self.weights = weights
             self.train_accuracies.append(accuracy_score(y_true=y, y_pred=self.predict(x)))
 
-            print(f"y = {y}, prediction = {self.predict(x)}")
-
 
 
     def perform_GD_update_step(self, weights, x, y, lr):
@@ -187,7 +185,7 @@ class MultivarLogReg():
         p = np.linalg.solve(H, g)
         _G = L_est * (g @ p)
         alpha = (-1 + np.sqrt(1 + 2 * _G)) / _G
-        print(alpha)
+
         weights = weights - alpha * p
         return weights
 
@@ -201,7 +199,6 @@ class MultivarLogReg():
         diff = weights_new - weights_old
         p = _Hessian_old @ diff
         _M_k = np.linalg.norm(g_new - g_old - p) / (np.linalg.norm(diff)**2)
-        print(f"M_k = {_M_k}")
         _H_new = np.maximum(_M_k, _H_old / 2)
         _lambda_new = np.sqrt(_H_new * np.linalg.norm(g_new))
         s = np.linalg.solve(_Hessian_new + _lambda_new * np.eye(d), g_new)
