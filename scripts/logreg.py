@@ -29,8 +29,7 @@ class MultivarLogReg():
         
 
     def fit(self, x, y, epochs, lr=1, batch_size=None, lbd=0, alpha=1.0, mu=0.001,
-        H_adan_0=0.1, epsilon=1e-8,
-        sigma_0=1.0, eta_1=0.1, eta_2=0.9, gamma_1=2.0, gamma_2=0.5):
+        H_adan_0=0.1, epsilon=1e-8):
     #def fit(self, x, y, epochs, lr = 1, batch_size = None, lbd = 0, alpha = 1.0, mu=0.001, H_adan_0 = 0.1, #epsilon = 1e-8):
 
         # ones = np.ones(x.shape[0]).reshape((-1, 1))

@@ -127,7 +127,7 @@ def download_and_preprocess_mnist():
     return X_train, y_train, X_test, y_test
 
 
-def perform_train_run(dataset, loss_t, method, epochs):
+def setup(dataset, loss_t, method):
 
     if dataset == "a9a":
         X_train, y_train, X_test, y_test = download_and_preprocess_a9a()
@@ -172,16 +172,7 @@ def perform_train_run(dataset, loss_t, method, epochs):
         loss_type = LossFunction.NCCE
         y_test = y_test * 2 - 1
 
-    lr = MultivarLogReg(method=method, loss_type=loss_type)
-    lr.fit(X_train, y_train, epochs=epochs, lr=1, batch_size=None, lbd=0, epsilon=1e-3)
-    print("Training complete")
-
-    pred = lr.predict(X_test)
-    accuracy = accuracy_score(y_test, pred)
-
-    print(f"Test accuracy: {accuracy}")
-
-    return lr, accuracy
+    return X_train, X_test, y_train, y_test, loss_type, method
 
 
 if __name__ == '__main__':
@@ -195,7 +186,16 @@ if __name__ == '__main__':
                         help="method to use (gd, newton, m22, cubic, adan, crn)")
     args = parser.parse_args()
 
-    lr, accuracy = perform_train_run(args.dataset, args.loss, args.method, 10)
+    X_train, X_test, y_train, y_test, loss_type, method = setup(args.dataset, args.loss, args.method)
+
+    lr = MultivarLogReg(method=method, loss_type=loss_type)
+    lr.fit(X_train, y_train, epochs=10, batch_size=None)
+    print("Training complete")
+
+    pred = lr.predict(X_test)
+    accuracy = accuracy_score(y_test, pred)
+
+    print(f"Test accuracy: {accuracy}")
 
     print(f"time to convergence = {lr.time_to_convergence}")
 
