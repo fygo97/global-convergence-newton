@@ -40,8 +40,9 @@ class MultivarLogReg():
         start_time = time.time()
 
         H_adan = 4 * H_adan_0
-
-        batch_size = x.shape[0] if batch_size == None else 2048
+        
+        if batch_size == None:
+            batch_size = x.shape[0] 
 
         self.classes_ = np.unique(y)
         num_classes = len(self.classes_)
@@ -64,9 +65,11 @@ class MultivarLogReg():
         if self.method == Method.ADANP:
             self.weights_new = weights + np.random.randn(*weights.shape) * 0.01
             self.weights_old = weights
-            g_new = self.loss_function.grad(self.weights_new, x, y)
-            g_old = self.loss_function.grad(self.weights_old, x, y)
-            _Hessian_old = self.loss_function.hessian(self.weights_old, x, y)
+            x_batch = x[:batch_size]
+            y_batch = y[:batch_size]
+            g_new = self.loss_function.grad(self.weights_new, x_batch, y_batch)
+            g_old = self.loss_function.grad(self.weights_old, x_batch, y_batch)
+            _Hessian_old = self.loss_function.hessian(self.weights_old, x_batch, y_batch)
             diff = self.weights_new - self.weights_old
             p = _Hessian_old @ diff
             self._H_old = np.linalg.norm(g_new - g_old - p) / (np.linalg.norm(diff)**2)
@@ -92,7 +95,7 @@ class MultivarLogReg():
                     weights, H_adan = self.perform_ADAN_update_step(weights, x_batch, y_batch, _H = H_adan)
                 elif self.method == Method.ADANP:
                     self.weights_new, self.weights_old, self._H_old = self.perform_ADANP_update_step(
-                        self.weights_old, self.weights_new, x, y, self._H_old)
+                        self.weights_old, self.weights_new, x_batch, y_batch, self._H_old)
                     weights = self.weights_new
                 elif self.method == Method.CRN:
                     weights = self.perform_CRN_update_step(weights,x_batch, y_batch, sigma_0=1.0, eta_1=0.1, eta_2=0.9, gamma_1=2.0, gamma_2=0.5)

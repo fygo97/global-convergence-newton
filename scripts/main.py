@@ -192,7 +192,7 @@ if __name__ == '__main__':
     parser.add_argument("loss", type=str, choices=["ce", "ncce"], 
                         help="Loss function to use (ce, ncce)")
     parser.add_argument("method", type=str, choices=["gd", "newton", "grn", "aicn", "adan", "adanp", "crn"], 
-                        help="method to use (gd, newton, m22, cubic, adan, crn)")
+                        help="method to use (gd, newton, m22, cubic, adan,crn)")
     args = parser.parse_args()
 
     lr, accuracy = perform_train_run(args.dataset, args.loss, args.method, 10)
