@@ -28,9 +28,8 @@ class MultivarLogReg():
         self.weights_old = None
         
 
-    def fit(self, x, y, epochs, lr=1, batch_size=None, lbd=0, alpha=1.0, mu=0.001,
+    def fit(self, x, y, epochs, lr=1, batch_size=None, initial_weights=None, lbd=0, alpha=1.0, mu=0.001,
         H_adan_0=0.1, epsilon=1e-8):
-    #def fit(self, x, y, epochs, lr = 1, batch_size = None, lbd = 0, alpha = 1.0, mu=0.001, H_adan_0 = 0.1, #epsilon = 1e-8):
 
         # ones = np.ones(x.shape[0]).reshape((-1, 1))
         # x = np.hstack([ones, x])  # Add bias column
@@ -45,7 +44,10 @@ class MultivarLogReg():
 
         self.classes_ = np.unique(y)
         num_classes = len(self.classes_)
-        self.weights = np.ones(x.shape[1]) * 0.1
+        if initial_weights is None:
+            self.weights = np.ones(x.shape[1]) * 0.1
+        else:
+            self.weights = initial_weights
         self.train_accuracies.append(accuracy_score(y_true=y, y_pred=self.predict(x)))
         logger.info(f"full weights shape = {self.weights.shape}")
 
