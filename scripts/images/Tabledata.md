@@ -1,20 +1,24 @@
-Method order corresponds to row-wise plot legend order!
-
+# Method order corresponds to row-wise plot legend order!
+# e.g. for IJCNN1-CE we have gd, classic newton, global reg newton, adan+, adan, cubic reg newton
 IJCNN1-CE
 Average execution time(s): [0.14321582 0.18944772 0.27439833 0.19319844 0.27573029 0.22383626]
 Average test accuracy(ies): [0.89235611 0.90147757 0.92446791 0.92361444 0.92422788 0.90134422]
 
+# e.g for here we have order: gd, adan+, global reg newton, cubic reg newton, adan
 IJCNN1-NCCE (Newton fail: Singular Matrix)
 Average execution time(s): [0.16364368 0.24247583 0.30651744 0.31892339 0.26553814]
 Average test accuracy(ies): [0.88248786 0.90587827 0.92417453 0.92390783 0.9037446 ]
 
+# e.g for here we have order: gd, adan+, global reg newton, cubic reg newton, adan
 A9A-CE (Newton fail: Singular Matrix)
 Average execution time(s): [0.71559525 0.97362463 1.38576921 1.40587942 1.07932448]
 Average test accuracy(ies): [0.77480908 0.85101243 0.84994779 0.84994779 0.83866675]
 
+# e.g for here we have order: gd, classic newton, global reg newton, adan+, adan, cubic reg newton
 A9A-NCCE
 Average execution time(s): [0.49057078 0.72124322 1.04663467 0.70718209 1.06634569 0.79588675]
 Average test accuracy(ies): [0.77145139 0.85219991 0.85129906 0.85129906 0.85129906 0.83676269]
+
 
 COVTYPE-CE (Newton and GD: Singular Matrix)
 Average execution time(s): [11.22298996 16.72143237 16.94164968 12.55757769]
