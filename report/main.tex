@@ -133,7 +133,8 @@ The classical origin of Newton's method is as an algorithm for finding the roots
 \end{equation}
 
 The inverse Hessian can be interpreted as transforming the gradient landscape to be more isotropic, thereby improving the conditioning of the problem. 
-
+\subsection{Cubic Newton}
+AICN gibt sich zwar als regularized method aus, kann in Wirklichkeit aber nicht umgehen die Matrix trotzdem zur Berechnung des Faktors Alpha invertieren zu müssen. Es kämpft deshalb für singulare oder illcondiitoned matrizen mit genau denselben problemen, wie unregularisierte Methoden. Kann man das sicher nicht umgehen, dass man für das Alpha das Skalarprodukt invertieren muss
 \subsection{Cubic Newton}
 
 The cubic Newton method was one of the first to achieve a good complexity guarantee globally [REFERENCE TO DO: What convergence rate exactly?]. It is based on cubic regularization and uses the update rule:

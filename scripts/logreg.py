@@ -28,8 +28,9 @@ class MultivarLogReg():
         self.weights_old = None
         
 
-    def fit(self, x, y, epochs, lr=1, batch_size=None, initial_weights=None, lbd=0, alpha=1.0, mu=0.001,
-        H_adan_0=0.1, epsilon=1e-8):
+    def fit(self, x, y, epochs, lr=1, batch_size=None, lbd=0, alpha=1.0, mu=0.001,
+        H_adan_0=0.1, epsilon=1e-6):
+
 
         # ones = np.ones(x.shape[0]).reshape((-1, 1))
         # x = np.hstack([ones, x])  # Add bias column
@@ -80,6 +81,9 @@ class MultivarLogReg():
 
         for epoch in trange(epochs, desc="Training Epochs"):
 
+            #print("Initial grad norm (inf):", np.linalg.norm(self.loss_function.grad(weights, x, y), ord=np.inf))
+            #print("Epsilon:", epsilon)
+            
             # Batch loop: Allows epochs to be split into batches. we do not split @fynn) Only performs one iteration when batch_size is chosen as None 
             for start in range(0, n_samples, batch_size):
                 end = min(start + batch_size, n_samples)
@@ -110,9 +114,14 @@ class MultivarLogReg():
                 self.criterion_reached = epoch
                 stop_time = time.time()
                 self.time_to_convergence = stop_time - start_time
+                print(f"Converged at epoch {epoch} in {self.time_to_convergence:.4f} seconds.") 
+                print(f"Epoch {epoch}: grad norm (inf) = {np.linalg.norm(self.loss_function.grad(weights, x, y), ord=np.inf)}")
+                break
 
             self.weights = weights
+            print(f"weights min: {self.weights.min()}, max: {self.weights.max()}") #prints maximal and minimal 
             self.train_accuracies.append(accuracy_score(y_true=y, y_pred=self.predict(x)))
+
 
 
 
