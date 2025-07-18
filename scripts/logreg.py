@@ -24,10 +24,15 @@ class MultivarLogReg():
         self.grad_norm = []
         self.criterion_reached = -1
         self.time_to_convergence = 0
+        self.weights_new = None
+        self.weights_old = None
+        self._H_old = None
         
 
-
-    def fit(self, x, y, epochs, lr = 1, batch_size = None, lbd = 0, alpha = 1.0, mu=0.001, H_adan_0 = 0.1, epsilon = 1e-8):
+    def fit(self, x, y, epochs, lr=1, batch_size=None, lbd=0, alpha=1.0, mu=0.001,
+        H_adan_0=0.1, epsilon=1e-8,
+        sigma_0=1.0, eta_1=0.1, eta_2=0.9, gamma_1=2.0, gamma_2=0.5):
+    #def fit(self, x, y, epochs, lr = 1, batch_size = None, lbd = 0, alpha = 1.0, mu=0.001, H_adan_0 = 0.1, #epsilon = 1e-8):
 
         # ones = np.ones(x.shape[0]).reshape((-1, 1))
         # x = np.hstack([ones, x])  # Add bias column
@@ -56,20 +61,15 @@ class MultivarLogReg():
 
         logger.info(f"single weights shape = {weights.shape}")
 
-        weights_new = None
-        weights_old = None
-        _H_old = None
-
         if self.method == Method.ADANP:
             self.weights_new = weights + np.random.randn(*weights.shape) * 0.01
             self.weights_old = weights
-
             g_new = self.loss_function.grad(self.weights_new, x, y)
             g_old = self.loss_function.grad(self.weights_old, x, y)
             _Hessian_old = self.loss_function.hessian(self.weights_old, x, y)
             diff = self.weights_new - self.weights_old
             p = _Hessian_old @ diff
-            _H_old = np.linalg.norm(g_new - g_old - p) / (np.linalg.norm(diff)**2)
+            self._H_old = np.linalg.norm(g_new - g_old - p) / (np.linalg.norm(diff)**2)
 
 
         for epoch in trange(epochs, desc="Training Epochs"):
@@ -91,8 +91,12 @@ class MultivarLogReg():
                 elif self.method == Method.ADAN:
                     weights, H_adan = self.perform_ADAN_update_step(weights, x_batch, y_batch, _H = H_adan)
                 elif self.method == Method.ADANP:
-                    self.weights_new, self.weights_old, _H_old = self.perform_ADANP_update_step(self.weights_new, self.weights_old, x, y, _H_old)
+                    self.weights_new, self.weights_old, self._H_old = self.perform_ADANP_update_step(
+                        self.weights_old, self.weights_new, x, y, self._H_old)
                     weights = self.weights_new
+                elif self.method == Method.CRN:
+                    weights = self.perform_CRN_update_step(weights,x_batch, y_batch, sigma_0=1.0, eta_1=0.1, eta_2=0.9, gamma_1=2.0, gamma_2=0.5)
+
 
             # Evaluate full-batch performance after epoch
             self.losses.append(self.loss_function.loss(weights, x, y))
@@ -200,14 +204,64 @@ class MultivarLogReg():
         s = np.linalg.solve(_Hessian_new + _lambda_new * np.eye(d), g_new)
         weights_new_new = weights_new - s
         return weights_new_new, weights_new, _H_new
+    
+    def perform_CRN_update_step(self, weights_0,x, y, sigma_0=1.0, eta_1=0.1, eta_2=0.9, gamma_1=2.0, gamma_2=0.5):
+        # implements step 1 of Algorithm 2.3 in Cartis
+        def cauchy_point(g, B, sigma):
+            a = np.dot(g, g)
+            b = np.dot(g, B @ g)
+            c = np.linalg.norm(g)**3
+            discriminant = b**2 + 4 * sigma * a * c
+            alpha = (-b + np.sqrt(discriminant)) / (2 * sigma * c)
+            return -alpha * g
+        
+        # implements step 4 of Algorithm 2.3 in Cartis
+        def update_sigma(loss_old, loss_new, mk_sk, sigma_k, eta_1=0.1, eta2=0.9, gamma_1=2.0, gamma_2=0.5):
+            actual_red = loss_old - loss_new
+            pred_red = loss_old - mk_sk
+            if pred_red <= 0:
+                return sigma_k * gamma_1
+            rho_k = actual_red / pred_red
+            if rho_k > eta2: # good step => half sigma_k
+                return sigma_k * gamma_2 # gamma_2 = 0.5 so we half sigma_k
+            elif rho_k >= eta_1: # okay setp => leave sigma_k as is
+                return sigma_k
+            else:
+                return sigma_k * gamma_1 # bad step => double sigma_k
+        
+        weights_k = weights_0.copy()
+        sigma_k = sigma_0
 
+
+        # step 1: compute the cauchy point
+        g = self.loss_function.grad(weights_k,x,y)
+        _Hessian = self.loss_function.hessian(weights_k,x,y)
+        s_k = cauchy_point(g, _Hessian, sigma_k)
+
+        # step 2: compute pk
+        loss_old = self.loss_function.loss(weights_k,x,y)
+        loss_new = self.loss_function.loss(weights_k+s_k,x,y)
+        mk_sk = loss_old + g @ s_k + 0.5 * s_k @ (_Hessian @ s_k) + (sigma_k / 3) * np.linalg.norm(s_k)**3 # see (1.3) in Cartis
+        rho_k = (loss_old - loss_new) / (loss_old - mk_sk) if (loss_old - mk_sk) != 0 else 0
+
+        # step 3: update xk if rho_k>= eta_1
+        if rho_k >= eta_1:
+            weights_k += s_k
+
+        
+        sigma_k = update_sigma(loss_old, loss_new, mk_sk, sigma_k, eta_1, eta_2, gamma_1, gamma_2)
+        return weights_k
+    
+    
 
     def predict(self, x):
         '''
             Returns a class label prediction.
             Applies expit to X*w elmentwise and derives a label prediction for accuracy plot.
         '''
-        logits = x @ self.weights        # shape: (n_samples, num_classes)
+        logits = x @ self.weights
         probs = expit(logits)
-        prediction = np.array([1 if p > 0.5 else 0 for p in probs])
-        return prediction
+        if self.loss_type == LossFunction.CE:
+            return np.array([1 if p > 0.5 else 0 for p in probs])
+        else:  # NCCE
+            return np.array([1 if p > 0.5 else -1 for p in probs])
