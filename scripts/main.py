@@ -54,12 +54,12 @@ def download_and_preprocess_a9a():
     X_train, y_train = load_svmlight_file("a9a")
     X_test, y_test = load_svmlight_file("a9a.t", n_features=X_train.shape[1])
 
-    # Convert from sparse to dense, then cast to float32
-    X_train = X_train.toarray().astype(np.float32)
-    X_test = X_test.toarray().astype(np.float32)
+    # Convert from sparse to dense, then cast to float64
+    X_train = X_train.toarray().astype(np.float64)
+    X_test = X_test.toarray().astype(np.float64)
 
-    y_train = y_train.astype(np.float32)
-    y_test = y_test.astype(np.float32)
+    y_train = y_train.astype(np.float64)
+    y_test = y_test.astype(np.float64)
 
     return X_train, y_train, X_test, y_test
 
@@ -80,10 +80,10 @@ def download_and_preprocess_covtype():
     y_train = y_train - 1.0
     X_train, X_test, y_train, y_test = train_test_split(X_train, y_train, test_size=0.25)
 
-    X_train = np.array(X_train).astype(np.float32)
-    X_test = np.array(X_test).astype(np.float32)
-    y_train = np.array(y_train).astype(np.float32)
-    y_test = np.array(y_test).astype(np.float32)
+    X_train = np.array(X_train).astype(np.float64)
+    X_test = np.array(X_test).astype(np.float64)
+    y_train = np.array(y_train).astype(np.float64)
+    y_test = np.array(y_test).astype(np.float64)
 
     return X_train, y_train, X_test, y_test
 
@@ -100,10 +100,10 @@ def download_and_preprocess_ijcnn1():
     X_train = X_train.toarray()
     X_train, X_test, y_train, y_test = train_test_split(X_train, y_train, test_size=0.25)
 
-    X_train = np.array(X_train).astype(np.float32)
-    X_test = np.array(X_test).astype(np.float32)
-    y_train = np.array(y_train).astype(np.float32)
-    y_test = np.array(y_test).astype(np.float32)
+    X_train = np.array(X_train).astype(np.float64)
+    X_test = np.array(X_test).astype(np.float64)
+    y_train = np.array(y_train).astype(np.float64)
+    y_test = np.array(y_test).astype(np.float64)
     return X_train, y_train, X_test, y_test
 
 def download_and_preprocess_mnist():
@@ -120,10 +120,10 @@ def download_and_preprocess_mnist():
 
     X_train, X_test, y_train, y_test = train_test_split(X_train, y_train, test_size=0.25)
 
-    X_train = np.array(X_train).astype(np.float32)
-    X_test = np.array(X_test).astype(np.float32)
-    y_train = np.array(y_train).astype(np.float32)
-    y_test = np.array(y_test).astype(np.float32)
+    X_train = np.array(X_train).astype(np.float64)
+    X_test = np.array(X_test).astype(np.float64)
+    y_train = np.array(y_train).astype(np.float64)
+    y_test = np.array(y_test).astype(np.float64)
 
     return X_train, y_train, X_test, y_test
 
