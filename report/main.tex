@@ -123,42 +123,50 @@ where the diagonal matrix $D(\omega)$ has entries
 \begin{align}
 D_{ii}(\omega) &= \hat{y}_i (1 - \hat{y}_i)=  \sigma(-y_i x_i^\top \omega) \big(1 - \sigma(-y_i x_i^\top \omega)\big),\quad 
 \end{align}
-In order to discuss the Algorithms assumptions and conditions in the later sections of this paper we will first state some properties of the given problems.\\
-\\
+In order to discuss the Algorithms assumptions and conditions in the later sections of this paper we will first state a few properties of the given problems.
+%
+\subsection{Differentiability}
+Both $L_1$ and $L_2$ satisfy $L_1, L_2 \in C ^\infty (\Omega)$ since both functions are compositions of functions from $C ^\infty (\Omega)$.
 0. Symmetry of Hessian:
 It is easy to verify that the Hessians of both loss functions are symmetric as
 $$ (X^\top D X) \top = (X^\top D^\top (X ^\top)^\top)  = X^\top D X$$
 and for $\nabla^2 L_2 $ symmetry is even more trivial as we only add a diagonal matrix $\nabla ^2 r(\omega)$ onto the first one.\\
-\\
-1. Invertibility:\\
+%
+\subsection{Invertibility}
 The matrix $ \nabla ^2 L_1(\omega) = X^\top D(\omega)X$ is invertible if and only if X has full rank.\\
 \textit{Proof:}
 "$ \Longrightarrow$" (by contrapositive)
 Assume that $X$ doesnt have full rank, then by the definition of rank it holds, that
 $$ \exists y \neq 0 \quad s.t. \quad Xy = 0 \implies X^\top DX\underbrace{Xy}_{=0} =0 $$
-$$\implies X^\top DX \quad \textit{rank deficient} \implies X^\top DX \textit{ not invertible} $$
+$$\implies X^\top DX \quad \text{rank deficient} \implies X^\top DX \text{ not invertible} $$
 "$\Longleftarrow$" Assume $X$ has full rank and let $y\neq 0$. Then $ Xy \neq 0 \quad \forall y \neq 0$
-$$ \implies \underbrace{(Xy)^\top}_{\neq 0 \textit{ as full rank}} D (Xy) >0 \implies X^\top D X \quad \textit{is pd} \implies X^\top DX \quad \textit{invertible because}$$
-$\textit{for positive definite (square) matrices M it holds}$
+$$ \implies \underbrace{(Xy)^\top}_{\neq 0 \text{ as full rank}} D (Xy) >0 \implies X^\top D X \quad \text{is pd} \implies X^\top DX \quad \text{invertible because}$$
+$\text{for positive definite (square) matrices M it holds}$
 $$det(M) = det (U\Lambda U^\top) = det(U) det(M) det(U^T) = \underbrace{det(\underbrace{U U^\top}_{=I})}_{=1}  \underbrace{det(M)}_{> 0} > 0$$
 From the four available datasets we selected \texttt{a9a}, \texttt{ijcnn1} and \texttt{covtype} and using the described criterion we proved, that the Hessian of $L_1$ is invertible for \texttt{ijcnn1} but not for {ijcnn1} and \texttt{covtype}. Since for singular Hessians Newton's method fails due to the necessary inversion of the Hessian during the update step it is necessary to pick an algorithm with a sufficient regularization for the respective datasets with $L_1$.\\
-\\
+%
 For the matrix $\nabla ^2 L_2 (\omega) = X^\top D(\omega)X + \nabla ^2 r(\omega) $ we will show, that for finite weights there exists a sufficient choice of $\alpha$ s.t. $D \succ 0 $ (positive defnite (pd)) holds.\\
-$Proof: \textit{Assume for now, that $\nabla ^2 r(\omega)$ is pd (we will show this at the end of this proof) for some sufficient}\\
-\textit{choice of alpha w.r.t. finite weights }|w_j|< \infty.\\
-\textit{We first observe, that $ X^\top D X$ is positive semi-definite (psd), i.e.} y^\top X^\top D \overbrace{Xy}^{= \xi} =  \xi^\top D \xi \geq 0 $
-\textit{because D is pd which implies that $y^\top D y > 0 \quad \forall y \neq 0$ and combining this with the observation, that $\xi = Xy $ could be equal to $0$ the inequality becomes sharp. This implies}
-$$y^\top (X^\top DX + \nabla ^2 r(\omega))y = \underbrace{y^\top X^\top DXy}_{\geq 0} + \underbrace{y^\top \nabla ^2 r(\omega)y}_{>0 } > 0 \implies \nabla ^2 L_2 (\omega) \quad \textit{pd} \implies \textit{invertible}$$
+$Proof: \text{Assume for now, that $\nabla ^2 r(\omega)$ is pd (we will show this at the end of this proof) for some sufficient}\\
+\text{choice of alpha w.r.t. finite weights }|w_j|< \infty.\\
+\text{We first observe, that $ X^\top D X$ is positive semi-definite (psd), i.e. } y^\top X^\top D \overbrace{Xy}^{= \xi} =  \xi^\top D \xi \geq 0 $
+\text{because D is pd which implies that $y^\top D y > 0 \quad \forall y \neq 0$ and combining this with the observation, that $\xi = Xy $ could be equal to $0$ the inequality becomes sharp. This implies}
+$$y^\top (X^\top DX + \nabla ^2 r(\omega))y = \underbrace{y^\top X^\top DXy}_{\geq 0} + \underbrace{y^\top \nabla ^2 r(\omega)y}_{>0 } > 0 \implies \nabla ^2 L_2 (\omega) \quad \text{pd} \implies \text{invertible}$$
 Inspecting the Hessian of the non convex regularizer $\nabla ^2 r(\omega) = \operatorname{diag}\Big(\lambda \frac{2\alpha (1 - 3\alpha \omega_j^2)}{(1 + \alpha \omega_j^2)^3}\Big)$
 of the cross entropy loss function $L_2$ we directly notice, that since the matrix is psd for $\lambda > 0, \alpha > 0$, it is invertible if and only if it is pd (because if it's not pd it means that one of its eigenvalues must be 0).
 %
 The matrix is diagonal and inspecting it's entries we directly see that pd holds if and onl yif $1-3\alpha\cdot w_j^2>0 $ is satisfied, which is true for $\alpha < \frac{1}{3w_j ^2}$. Thus we can always find a feasible choice for $\alpha>0$ s.t $\nabla ^2 r(\omega)$ is pd for finite weights. 
 In our experiments we are presented with two practical issues, that weaken this statement. First we were given what we understood to be a mandatory parameter choice of  $\alpha = 1$ in the project description. The more interesting observation however, is that even when allowed to choose the regularization parameter $\alpha>0$ freely, the machine precision will treat any weight entries above the machine precision number as infinite and thus even though D is analytically pd we have that numerically the matrix degenerates for large weights. Numerically this can be stabilized by bounding weights heuristically, but since we focused on comparing the performance of different Newton-type methods for practical problems we refrained from doing so to not bias the results. Therefore we cannot guarantee, that the Hessian of our second loss function $L_2$ is invertible. In the experiments we will see that in fact singular Hessians appear for this Loss functions, making it intractable to solve with non-regularized Newton-type methods.\\
-\\
-2. Convexity:\\
-Since $\log(\hat{y_i}),\log(1-\hat{y_i})$ are concave on $(0,\infty)$ it follows that $-\log(\hat{y_i}),-\log(1-\hat{y_i})$ are convex and thus $L_1$ is a linear combination of convex functions (which is again convex). Meanwhile $L_2$ is not guaranteed to be convex due to the non-convex regularization term $r(\omega)$.
+%
+\subsection{Positive semidefiniteness of Hessian}
+In the previous section we proved, that $\nabla ^2 L_1$ is psd while $L_2$ does not necessarily have this property due to possibly negative eigenvalues of the non-convex regularization term $\nabla ^2 r(\omega)$.
 
-3. Hessian Lipschitz
+\subsection{Positive definiteness of Hessian}
+Since $\nabla^2 L_1(\omega)$ is psd we know, that the Hessian is pd for a dataset, if and only if it is invertible (because psd hessians have non-negative eigenvalues and if they are invertible all eigenvalues are non-zero (meaning they only have positive eigenvalues and thus they're pd). It follows that the Hessian of \texttt{ijcnn1} is pd while the Hessians of \texttt{a9a} and \texttt{covtype} are not pd. Since the Hessian of the regularization term $\nabla ^2 r(\omega)$ potentially has negative diagonal entries $\nabla^2 L_2(\omega)$ is not guaranteed to pd. [TODO: I could analyze when exactly that happens, but it feels pretty useless tbh, as the point was made I wanted to make i.e. that we cannot assume pd for AICN].
+
+\subsection{Convexity}
+We know that a twice differentiable function $f$ is convex if and only if its Hessian is psd. After our previous observations we conclude, that $L_1$ is convex, while $L_2$ is not.
+
+\subsection{Hessian Lipschitz}
 Both Hessians are Lipschitz, as $ \frac{1}{n} X ^\top D X =:M$ satisfies
 $$ \| M(\omega _1)-M(\omega _2)\| = \frac{1}{n}\| X^\top (D(\omega_1)-D(\omega_2))X \| \leq \underbrace{\frac{1}{n} \|X^\top \| \|X\| }_{=:C}\|D(\omega_1)-D(\omega_2)\|$$
 Now consider that $d(\sigma) := \sigma(z_k)(1- \sigma(z_k))$ where $ z_k = y_i x_i^\top \omega_k$ and observe, that $\frac{d}{d\sigma} = 1-2\sigma$ for $\sigma \in (0,1)$ then it follows, that $\sigma '(z) = \sigma (z) (1-\sigma(z)$ (by Remark 2) and by mean value theorem (MVT) we can conclude, that for
@@ -167,7 +175,7 @@ d'(z) = \sigma(z)(1 - \sigma(z))(1 - 2\sigma(z))
 \]
 we have 
 \[
-|d(z_1) - d(z_2)| \leq \sup_z |d'(z)| \cdot |z_1 - z_2| \quad \textit{where}
+|d(z_1) - d(z_2)| \leq \sup_z |d'(z)| \cdot |z_1 - z_2| \quad \text{where}
 \]
 \[
 |z_1 - z_2| = | x_i^\top (\omega_1 - \omega_2)| \leq \underbrace{|y_i|}_{\leq 1 \quad Remark 1} \|x_i\| \|\omega_1 - \omega_2\|
@@ -178,16 +186,20 @@ we have
 \[
 \|D(\omega_1) - D(\omega_2)\| \leq \sup_z |d'(z)| \cdot \max_i \|x_i\| \|\omega_1 - \omega_2\|
 \]
+and since we have
 \[
-\sup_z |d'(z)| = \frac{1}{4}
+\sup_z |d'(z)| = \max _{\sigma \in (0,1)} |\sigma (1-\sigma)(1-2 \sigma)|
 \]
+which takes its maximum at $\sigma^* = \frac{1}{2} \pm \frac{1}{2\sqrt{3}}$ and yields $d(\sigma ^*) = \frac{1}{4}$ we conclude
 \[
 \|D(\omega_1) - D(\omega_2)\| \leq \underbrace{\frac{1}{4} \max_i \|x_i\|}_{=:L'} \|\omega_1 - \omega_2\|
 \]
 $$\implies \| M(\omega _1)-M(\omega _2)\| \leq C \|D(\omega_1)-D(\omega_2)\| \leq \underbrace{C L'}_{=:L} \|\omega_1 - \omega_2 \| $$
+Since the gradient of the regularization term is also clearly bounded it follows, that $L_2$ is Lipschitz aswell, as it is the sum of Lipschitz functions.
+%
+\subsection{$L_{semi}$ semi-strongly self-concordance}
+Referring to \cite{hanzely2022damped} for the respective definitions of the norms and the statement itself (Definition 3 in \cite{hanzely2022damped}) we notice, that semi-strongly self-concordance (sssc) implicitly assumes the invertibility of the Hessian. Since we know that $L_2$ is not convex and not guaranteed to be invertible (because the matrix can become singular for certain choices of weights) $L_2$ is not sssc. Using the same logic for invertibility of the Hessian for $L_1$ it follows that this loss function is not sssc for the datasets \texttt{a9a} and \texttt{covtype}. For \texttt{ijcnn1} we can prove that sssc holds. [TODO: My asslong proof for sssc of L1 for that dataset.]
 
-4. Positive definiteness of Hessians\\
-Since $\nabla^2 L_1(\omega)$ is psd we know, that the Hessian is pd for a dataset, if and only if the Hessian is invertible (because psd hessians with nonzero eigenvalues only have positive eigenvalues and thus they're pd). It follows that the Hessian of \texttt{ijcnn1} is pd while the Hessians of \texttt{a9a} and \texttt{covtype} are not pd. Since the Hessian of the regularization term $\nabla ^2 r(\omega)$ potentially has negative diagonal entries $\nabla^2 L_2(\omega)$ is not guaranteed to pd. [TODO: I could analyze when exactly that happens, but it feels pretty useless tbh, as the point was made I wanted to make i.e. that we cannot assume pd for AICN].
 
 
 
