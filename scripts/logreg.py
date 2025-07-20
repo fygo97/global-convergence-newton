@@ -110,13 +110,14 @@ class MultivarLogReg():
             self.losses.append(self.loss_function.loss(weights, x, y))
             self.grad_norm.append(np.linalg.norm(self.loss_function.grad(weights, x, y)))
 
-            if (np.linalg.norm(self.loss_function.grad(weights, x, y), ord=np.inf) < epsilon and self.criterion_reached == -1):
-                self.criterion_reached = epoch
-                stop_time = time.time()
-                self.time_to_convergence = stop_time - start_time
-                print(f"Converged at epoch {epoch} in {self.time_to_convergence:.4f} seconds.") 
-                print(f"Epoch {epoch}: grad norm (inf) = {np.linalg.norm(self.loss_function.grad(weights, x, y), ord=np.inf)}")
-                break
+            if epsilon is not None:
+                if (np.linalg.norm(self.loss_function.grad(weights, x, y), ord=np.inf) < epsilon and self.criterion_reached == -1):
+                    self.criterion_reached = epoch
+                    stop_time = time.time()
+                    self.time_to_convergence = stop_time - start_time
+                    print(f"Converged at epoch {epoch} in {self.time_to_convergence:.4f} seconds.") 
+                    print(f"Epoch {epoch}: grad norm (inf) = {np.linalg.norm(self.loss_function.grad(weights, x, y), ord=np.inf)}")
+                    break
 
             self.weights = weights
             print(f"weights min: {self.weights.min()}, max: {self.weights.max()}") #prints maximal and minimal 
