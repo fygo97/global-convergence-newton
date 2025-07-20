@@ -332,6 +332,82 @@ Precondition with SSOR to reduce condition number.
 \bibliographystyle{unsrt}
 \bibliography{refs}
 
+\subsection{Experiments Setup}
+All algorithms were implemented in Python 3.13.0 using the NumPy and SciPy libraries. Experiments were conducted on a machine equipped with an Apple M4 Pro processor running the Sequoia 15.5 operating system. Visualizations and plots were generated using a Jupyter Notebook named global-convergence.py.
+
+The source code can be found on github (https://github.com/ben133290/global-convergence-newton).
+
+
+\subsection{PLOTS AND STUFF (please copy and paste to final locaton in report)}
+
+\begin{table}[ht]
+  \centering
+  \caption{Run time and test accuracy for each algorithm on each dataset and loss type}
+  \label{tab:results}
+  \begin{tabular}{lllrrl}
+    \toprule
+    Dataset & Loss Type & Method & Mean Execution Time (s) & Mean Test Accuracy & \\
+    \midrule
+    \multirow{a9a} 
+      & \multirow{Binary CE Loss}
+        & Gradient Descent               & 0.76568969 & 0.78 & \\
+        &                                & Classic Newton                & failed  & failed & \\
+        &                                & Adaptive Newton              & 1.93920263 & 0.84 & \\
+        &                                & Adaptive Newton+            & 1.886729 & 0.84 & \\
+        &                                & Globally Convergent Newton & 1.22799778 & 0.85 & \\
+        &                                & Cubic Regularized Newton    & 1.38458006 & 0.84 & \\
+      & \multirow{Non-convex CE Loss}
+        & Gradient Descent               & 0.7895395& 0.78 & \\
+        &                                & Classic Newton                & 1.30171601 & 0.85 & \\
+        &                                & Adaptive Newton              & failed & failed & \\
+        &                                & Adaptive Newton+            & 2.03450656 & 0.82 & \\
+        &                                & Globally Convergent Newton & 1.27804756 & 0.85 & \\
+        &                                & Cubic Regularized Newton    & 1.48027492 & 0.84 & \\
+    \midrule
+    \multirow{ijcnn1} 
+      & \multirow{Binary CE Loss}
+        & Gradient Descent               & 0.11042674 & 0.88 & \\
+        &                                & Classic Newton                &  0.18028998 & 0.92 & \\
+        &                                & Adaptive Newton              & 0.27533038 & 0.92 & \\
+        &                                & Adaptive Newton+            & 0.31017598 & 0.92 & \\
+        &                                & Globally Convergent Newton & 0.1776003 & 0.90 & \\
+        &                                & Cubic Regularized Newton    & 0.21398926 & 0.90 & \\
+      & \multirow{Non-convex CE Loss}
+        & Gradient Descent               & 0.11616317 & 0.90 & \\
+        &                                & Classic Newton                & failed  & failed & \\
+        &                                & Adaptive Newton              & 0.26090709 & 0.92 & \\
+        &                                & Adaptive Newton+            & 0.2853574 & 0.92 & \\
+        &                                & Globally Convergent Newton & 0.17406511 & 0.90 & \\
+        &                                & Cubic Regularized Newton    & 0.20171062 & 0.90 & \\
+    \midrule
+    \multirow{covtype} 
+      & \multirow{Binary CE Loss}
+                                         & Adaptive Newton              & 20.22513978 & 0.75 & \\ 
+        &                                & Adaptive Newton+            & 20.77353032 & 0.75 & \\
+        &                                & Global Regularized Newton & 12.83550604 & 0.74 & \\
+        &                                & Cubic Regularized Newton    & 14.80531335  & 0.69 & \\
+      & \multirow{Non-convex CE Loss}
+                                         & Adaptive Newton              & 31.30845594 & 0.75 & \\   
+        &                                & Adaptive Newton+            & 21.32005628 & 0.75 & \\
+        &                                & Global Regularized Newton & 13.47647985 & 0.74 & \\
+        &                                & Cubic Regularized Newton    & 14.6580193 & 0.69 & \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}
+  \caption{Average execution time to reach convergence criterion for different methods. (Gradient Descent failed)}\label{tab:conv-res}
+  \begin{center}
+    \begin{tabular}[c]{rrrrrr}
+      \hline
+      Global Regularized Newton & Adaptive Newton & Adaptive Newton+ & Cubic Regularized Newton & Classic Newton \\
+      \hline
+      2.26345611 & 0.35479093 & 0.25507712 & 8.79509473 & 0.11621308 \\
+      \hline
+    \end{tabular}
+  \end{center}
+\end{table}
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section*{Checklist}
