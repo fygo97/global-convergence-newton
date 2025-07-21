@@ -2,7 +2,8 @@
 
 % ready for submission
 \usepackage{neurips_2022}
-
+\usepackage{booktabs}
+\usepackage{multirow}
 \usepackage[utf8]{inputenc} % allow utf-8 input
 \usepackage[T1]{fontenc}    % use 8-bit T1 fonts
 \usepackage{hyperref}       % hyperlinks
@@ -13,6 +14,7 @@
 \usepackage{microtype}      % microtypography
 \usepackage{xcolor}         % colors
 \usepackage{amsmath}
+\usepackage{graphicx}
 
 \title{Global Convergence Newton}
 
@@ -46,11 +48,7 @@
 
 
 \begin{abstract}
-  The abstract paragraph should be indented \nicefrac{1}{2}~inch (3~picas) on
-  both the left- and right-hand margins. Use 10~point type, with a vertical
-  spacing (leading) of 11~points.  The word \textbf{Abstract} must be centered,
-  bold, and in point size 12. Two line spaces precede the abstract. The abstract
-  must be limited to one paragraph.
+  In this paper, we study several Newton-type optimization methods applied to machine learning-motivated problems. We analyze the theoretical convergence guarantees of each method and discuss their applicability in realistic settings where exact Hessians may not be available. Our experiments span two loss functions: the standard cross-entropy loss and the cross-entropy loss with non-convex regularization.We evaluate performance across a variety of problem settings, including convex and non-convex objectives, invertible and singular Hessians, and assumptions such as coercivity and semi-strong self-concordance. The methods investigated include seven algorithms: classical Newton's method, regularized cubic Newton, globally convergent Newton, Adaptive Newton (AdaN), Adaptive Newton+ (AdaN+), and affine-invariant cubic Newton (AICN). We conclude with a runtime-based comparative assessment that highlights the strengths and limitations of each method.
 \end{abstract}
 
 \section{Introduction}
@@ -67,8 +65,7 @@ objective function. Newton's method is known to have fast local convergence guar
 functions. However, the global convergence properties of Newton's method are still an active area of
 research \cite{mishchenko2023regularized} \cite{hanzely2022damped}. In contrast to first-order methods like gradient descent, second-order methods, such as Newton's method can achieve much faster convergence when presented with ill conditioned Hessians by transferring the problem into a more isotropic optimization problem at the cost of an increase to cubic run time. Newton's method yields local quadratic convergence if $f$ is twice differentiable (or we have suitable regularity conditions), which degrade outside of the local regions, yielding up to sublinear global convergence guarantees, depending on the alogithm.
 
-In this paper, we explore the theoretical foundations of several Newton-type methods that achieve different global convergence guarantees, compare their performance in a classification-type problem for two loss functions on four different datasets.
-Finally we will propose two modifications of the algorithms to achieve an increase in runtime, by either coupling the Newton-type method with a conjugate gradient method for Hessian vector multiplication or Strassen's algorithm for fast matrix inversion.
+In this paper, we explore the theoretical foundations of several Newton-type methods that achieve different global convergence guarantees, and compare their performance in a classification-type problem for two loss functions on three different datasets.
 \section{Background}
 \subsection{Loss function and Datasets}
 Let 
@@ -85,14 +82,14 @@ For $\sigma(x) := \frac{\exp(x)}{1+\exp(x)}$ the loss functions w.r.t. weights $
 \begin{align}
 L_1(\omega) &= -\frac{1}{n} \sum_{i=1}^{n} \Big( y_i \log \hat{y}_i + (1 - y_i) \log (1 - \hat{y}_i) \Big), \quad \hat{y}_i = \sigma(x_i^\top \omega) \\
 L_2(\omega) &= \frac{1}{n} \sum_{i=1}^{n} \log\big(1 + \exp(-y_i x_i^\top \omega)\big) + r(\omega), \quad
-r(\omega) = \lambda \sum_{j=1}^{d} \frac{\alpha \omega _j^2}{1 + \alpha \omega _j^2} \\
+r(\omega) = \lambda \sum_{j=1}^{d} \frac{\alpha \omega _j^2}{1 + \alpha \omega _j^2}
 \end{align}
 which yields the two optimization problems
 \begin{align}
   \min _{\omega} L_1(\omega)\\
   \min _{\omega} L_2(\omega)
 \end{align}
-Remark 1: The 0-1 loss function for logistic regression is given by
+\textit{Remark 1: The 0-1 loss function for logistic regression is given by
 \begin{align*}
   -\sum_{i=1}^N \log\left[ \mu_i^{\mathbb{I}(y_i=1)} (1-\mu_i)^{\mathbb{I}(y_i=0)} \right] 
   =  -\sum_{i=1}^N \left[ y_i \log \mu_i + (1 - y_i) \log(1-\mu_i) \right]
@@ -103,7 +100,8 @@ If we instead use labels $\tilde{y}_i \in \{-1, +1\}$, the negative log-likeliho
   \sum_{i=1}^N \log\left(1 + \exp(-\tilde{y}_i\,\mathbf{w}^T\mathbf{x}_i)\right)
 \end{align*}
 \cite[Eq.~8.4]{murphy2012ml}.
-To ensure the loss functions correspond to the correct likelihood, the label encoding must match the loss form \cite[Sec.~8.3.1]{murphy2012ml}.\\
+To ensure the loss functions correspond to the correct likelihood, the label encoding must match the loss form \cite[Sec.~8.3.1]{murphy2012ml}. Consequently labels were adapted conditioned to meet the loss functions requirements.}\\
+\\
 The corresponding gradients of $L_i$ are
 \begin{align}
 \nabla L_1(x) &= \frac{1}{n} X^\top (\hat{y} - y) \\
@@ -114,41 +112,194 @@ with $\nabla r(\omega)^\top = \lambda \left[ \frac{2\alpha \omega_1}{(1 + \alpha
 
 Differentiating again yields the Hessians
 \begin{align}
-\nabla^2 L_1(\omega) &= \frac{1}{n} X^\top D X\\
-\nabla^2 L_2(\omega) &= \frac{1}{n} X^\top D X + \nabla^2 r(\omega), \quad
-r(\omega) = \operatorname{diag}\Big(\lambda \frac{2\alpha (1 - 3\alpha \omega_j^2)}{(1 + \alpha \omega_j^2)^3}\Big)
+\nabla^2 L_1(\omega) &= \frac{1}{n} X^\top D_1 (\omega) X\\
+\nabla^2 L_2(\omega) &= \frac{1}{n} X^\top D_2(\omega) X + \nabla^2 r(\omega), \quad
+\nabla ^2 r(\omega) = \operatorname{diag}\Big(\lambda \frac{2\alpha (1 - 3\alpha \omega_j^2)}{(1 + \alpha \omega_j^2)^3}\Big)
 \end{align}
-where the diagonal matrix $D$ has entries
+where the diagonal matrices  $D_1(\omega), D_2(\omega)$ have entries
 \begin{align}
-D_{ii} &= \hat{y}_i (1 - \hat{y}_i)=  \sigma(-y_i x_i^\top \omega) \big(1 - \sigma(-y_i x_i^\top \omega)\big),\quad 
+  [D_1]_{ii}(\omega) &= \hat{y}_i (1 - \hat{y}_i)=  \sigma( x_i^\top \omega) \big(1 - \sigma(x_i^\top \omega)\big),\quad\\
+  [D_2]_{ii}(\omega) &= \hat{y}_i (1 - \hat{y}_i)=  \sigma(-y_i x_i^\top \omega) \big(1 - \sigma(-y_i x_i^\top \omega)\big).\quad 
 \end{align}
-Observation:\\
-Since $\log(\hat{y_i}),\log(1-\hat{y_i})$ are concave on $(0,\infty)$ it follows that $-\log(\hat{y_i}),-\log(1-\hat{y_i})$ are convex and thus $L_1$ is a linear combination of convex functions (which is again convex). Meanwhile $L_2$ is not guaranteed to be convex due to the non-convex regularization term $r(\omega)$. 
+In order to discuss the algorithms assumptions and conditions in the later sections of this paper we will first state a few properties of the given problems.
+%
+\subsection{Differentiability}
+Both $L_1$ and $L_2$ satisfy $L_1, L_2 \in C ^\infty (\Omega)$, since both functions are compositions of functions from $C ^\infty (\Omega)$.
+\subsection{Symmetry of Hessian}
+It is easy to verify that the Hessians of both loss functions are symmetric as
+$$ (X^\top D X) \top = (X^\top D^\top (X ^\top)^\top)  = X^\top D X$$
+and for $\nabla^2 L_2 $ symmetry is even easier to verify as the finite sum of symmetric matrices is symmetric and $\nabla^2 r(\omega)$ is a diagonal matrix and thus symmetric.
+\subsection{Invertibility of Hessians}
+We will state and prove a claim that will help us check the invertibility of the hessians.\\
+Claim: The matrix $ \nabla ^2 L_1(\omega) = X^\top D(\omega)X$ is invertible if and only if X has full rank.\\
+\textit{Proof:}
+"$ \Longrightarrow$" (by contrapositive)
+Assume that $X$ doesnt have full rank, then by the definition of rank it holds, that
+$$ \exists y \neq 0 \quad s.t. \quad Xy = 0 \implies X^\top DX\underbrace{Xy}_{=0} =0 $$
+$$\implies X^\top DX \quad \text{rank deficient} \implies X^\top DX \text{ not invertible} $$
+"$\Longleftarrow$" Assume $X$ has full rank and let $y\neq 0$. Then $ Xy \neq 0 \quad \forall y \neq 0$
+$$ \implies \underbrace{(Xy)^\top}_{\neq 0 \text{ as full rank}} D (Xy) >0 \implies X^\top D X \quad \text{is pd} \implies X^\top DX \quad \text{invertible because}$$
+$\text{for positive definite (square) matrices M it holds}$
+$$det(M) = det (U\Lambda U^\top) = det(U) det(M) det(U^T) = \underbrace{det(\underbrace{U U^\top}_{=I})}_{=1}  \underbrace{det(M)}_{> 0} > 0$$
+From the four available datasets we selected \texttt{a9a}, \texttt{ijcnn1} aswell as \texttt{covtype} and using the described criterion we proved, that the Hessian of $L_1$ is invertible for \texttt{ijcnn1}, but singular for \texttt{a9a} and \texttt{covtype} (compare \texttt{ProofHRankDeficient.py}). Since for singular Hessians Newton's method fails due to the reliance of the Hessian inversion during the update step it is thus crucial to pick an algorithm with a sufficient regularization for these datasets with $L_1$.\\
+\\
+%
+For the matrix $\nabla ^2 L_2 (\omega) = X^\top D(\omega)X + \nabla ^2 r(\omega) $ we will show, that for finite weights there exists a sufficient choice of $\alpha$ s.t. $D \succ 0 $ (positive defnite (pd)) holds.\\
+Proof: We first observe, that $ X^\top D X$ is positive semi-definite (psd), i.e.  $y^\top X^\top D \overbrace{Xy}^{= \xi} =  \xi^\top D \xi \geq 0 $
+because D is pd which implies that $y^\top D y > 0 \quad \forall y \neq 0$ and combining this with the observation, that $\xi = Xy $ could be equal to $0$ the inequality becomes sharp. So if $\nabla ^2 r(\omega)$ was pd, this would imply
+$$y^\top (X^\top DX + \nabla ^2 r(\omega))y = \underbrace{y^\top X^\top DXy}_{\geq 0} + \underbrace{y^\top \nabla ^2 r(\omega)y}_{>0 } > 0 \implies \nabla ^2 L_2 (\omega) \quad \text{pd} \implies \text{invertible}$$
+Inspecting the Hessian of the non convex regularizer $\nabla ^2 r(\omega) = \operatorname{diag}\Big(\lambda \frac{2\alpha (1 - 3\alpha \omega_j^2)}{(1 + \alpha \omega_j^2)^3}\Big)$
+of the cross entropy loss function $L_2$ we directly notice, that since the matrix is diagonal it is pd for $\lambda > 0, \alpha > 0$ if and only if $1-3\alpha\cdot w_j^2>0 $ is satisfied, which is true for $\alpha < \frac{1}{3w_j ^2}$. Thus we can always find a feasible choice for $\alpha>0$ s.t $\nabla ^2 r(\omega)$ is pd for finite weights. 
+In our experiments we are presented with two practical issues, that weaken this statement. First we were given what we understood to be a mandatory parameter choice of  $\alpha = 1$ in the project description. The more interesting observation however, is that even when allowed to choose the regularization parameter $\alpha>0$ freely, the machine precision will treat any weight entries above the machine precision number as infinite and thus even though D is analytically pd we have that numerically the matrix degenerates for large weights (and the analytic bound thus cannot be utilized). Numerically this can be stabilized by bounding weights heuristically, but since we focused on comparing the performance of different Newton-type methods for practical problems we refrained from doing so as to not bias the results. Consequently, we cannot guarantee that the Hessian of our second loss function $L_2$ is invertible. In the experiments we will see that in fact singular Hessians appear for this Loss function, making it intractable to solve with non-regularized Newton-type methods.
+\subsection{Positive semidefiniteness of Hessian}
+In the previous section we proved, that $\nabla ^2 L_1$ is psd while $L_2$ does not necessarily have this property due to possibly negative eigenvalues of the non-convex regularization term $\nabla ^2 r(\omega)$.
 
+\subsection{Positive definiteness of Hessian}
+Since $\nabla^2 L_1(\omega)$ is psd we know, that the Hessian is pd for a dataset, if and only if it is invertible (because psd Hessians have non-negative eigenvalues and if they are invertible all eigenvalues are non-zero which directly yields they only have positive eigenvalues and thus are pd). It follows that for $L_1(\omega)$ the Hessian of \texttt{ijcnn1} is pd while the Hessians of \texttt{a9a} and \texttt{covtype} are not pd. Since the Hessian of the regularization term $\nabla ^2 r(\omega)$ potentially has negative diagonal entries $\nabla^2 L_2(\omega)$ is not guaranteed to be pd. Since all the algorithms did not present any convergence under their given assumptions for the loss function $L_2(\omega)$ we refrained from further analysis to determine for which conditions the the Hessian becomes singular.
+
+\subsection{Convexity}
+We know that a twice differentiable function $f$ is convex if and only if its Hessian is psd. After our previous observations we conclude, that $L_1$ is convex, while $L_2$ is not.
+
+\subsection{Hessian Lipschitz}
+Both Hessians are Lipschitz, as $ \frac{1}{n} X ^\top D X =:M$ satisfies
+$$ \| M(\omega _1)-M(\omega _2)\| = \frac{1}{n}\| X^\top (D(\omega_1)-D(\omega_2))X \| \leq \underbrace{\frac{1}{n} \|X^\top \| \|X\| }_{=:C}\|D(\omega_1)-D(\omega_2)\|$$
+Now consider that $d(\sigma) := \sigma(z_k)(1- \sigma(z_k))$ where $z_k \in \left\{ -y_i x_i ^\top \omega,x_i ^\top \omega \right\}$ can refer to either the input for $D_1$ or $D_2$ (the mechanic works the same for both) and observe, that $\frac{d}{d\sigma} = 1-2\sigma$ for $\sigma \in (0,1)$. Then it follows, that $\sigma '(z) = \sigma (z) (1-\sigma(z)$ and by mean value theorem (MVT) we can conclude, that for
+\[
+d'(z) = \sigma(z)(1 - \sigma(z))(1 - 2\sigma(z))
+\]
+we have 
+\[
+|d(z_1) - d(z_2)| \leq \sup_z |d'(z)| \cdot |z_1 - z_2| \quad \text{where}
+\]
+\[
+|z_1 - z_2| = | x_i^\top (\omega_1 - \omega_2)| \leq \underbrace{|y_i|}_{\leq 1, \quad  Remark\ 1} \|x_i\| \|\omega_1 - \omega_2\|
+\]
+(notice $z=x_i^\top \omega$satisfies the exact same bound)
+\[
+\implies |D_{ii}(\omega_1) - D_{ii}(\omega_2)| \leq \sup_z |d'(z)| \cdot \|x_i\| \|\omega_1 - \omega_2\|
+\]
+\[
+\implies \|D(\omega_1) - D(\omega_2)\| \leq \sup_z |d'(z)| \cdot \max_i \|x_i\| \|\omega_1 - \omega_2\|
+\]
+and since we have
+\[
+\sup_z |d'(z)| = \max _{\sigma \in (0,1)} |\sigma (1-\sigma)(1-2 \sigma)|
+\]
+which takes its maximum at $\sigma^* = \frac{1}{2} \pm \frac{1}{2\sqrt{3}}$ and yields $d(\sigma ^*) = \frac{1}{4}$ we conclude
+\[
+\|D(\omega_1) - D(\omega_2)\| \leq \underbrace{\frac{1}{4} \max_i \|x_i\|}_{=:L'} \|\omega_1 - \omega_2\|
+\]
+$$\implies \| M(\omega _1)-M(\omega _2)\| \leq C \|D(\omega_1)-D(\omega_2)\| \leq \underbrace{C L'}_{=:L} \|\omega_1 - \omega_2 \| $$
+Since the third derivative of the regularization term is clearly bounded (as its a fractorial of a polynomial without a singularity in the denominator and the nominator is dominated by the denominator) it follows, that $\nabla^2 r(\omega)$ is Lipschitz (where we let $L_r$ denote the Lipschitz constant). Consequently $\nabla^2 L_2$ is $(L+L_{r})$-Lipschitz, as it is the sum of two Lipschitz functions.
+%
+\subsection{$L_{semi}$ semi-strongly self-concordance}
+Briefly restating the definitions of \cite{hanzely2022damped} we have:
+$$\|h\|_x := \left\langle \nabla^2 f(x) h, h \right\rangle^{1/2}, h \in \mathbb{E}, \quad
+%
+\|g\|_x^* := \left\langle g, \nabla^2 f(x)^{-1} g \right\rangle^{1/2}, g \in \mathbb{E}^*,\quad 
+%
+\|\mathbf{H}\|_{\text{op}} := \sup_{v \in \mathbb{E}} \frac{\|\mathbf{H} v\|_x^*}{\|v\|_x}
+$$
+We call a convex function $f \in \mathcal{C}^2$ semi-strongly self-concordant if
+\[
+\left\| \nabla^2 f(y) - \nabla^2 f(x) \right\|_{\mathrm{op}} \leq L_{\mathrm{semi}} \left\| y - x \right\|_x, \quad \forall y, x \in \mathbb{E}.
+\]
+We notice, that semi-strongly self-concordance (sssc) implicitly assumes the invertibility of the Hessian. Since we know that $L_2$ is not convex and not guaranteed to be invertible (because the matrix can become singular for certain choices of weights) $L_2$ is not sssc. Using the same logic for invertibility of the Hessian for $L_1$ it follows that this loss function is not sssc for the datasets \texttt{a9a} and \texttt{covtype}. For \texttt{ijcnn1} we can prove that the sssc condition holds.\\
+\\
+to show: $\| \nabla ^2 L_1 (\omega _2) - \nabla ^2 L_1 (\omega _1)\|_{op} \leq L_{semi} \| \omega_2 - \omega_1 \|_{\omega_1}$\\
+Let $d(\cdot)$ be as before with $H := \nabla^2 L_1 (\omega_1)$ and $z_i^{(k)} = x_i ^\top \omega_k, k\in [2]$, then 
+\begin{align*}
+  \| &\nabla ^2 L_1 (\omega _2) - \nabla ^2 L_1 (\omega _1)\|_{op} 
+  \\
+  &= \sup _{v\neq 0}\frac{1}{n} \frac{\|(X^\top D(\omega_2)X-X^\top D(\omega_1)X  ) v\|^{*}_{\omega_1}}{\|v\|_{\omega_1}}
+  %
+  =\sup _{v\neq 0} \frac{1}{n} \frac{\| X^\top (D(\omega_2)-D(\omega_1)) X \|^{*}_{\omega_1}}{\|v\|_{\omega_1}}\\
+  %
+  &= \sup_{v \neq 0} \frac{1}{n} \frac{\sum_{i=1}^{n} \| d(z_i ^{(2)}) - d(z_i ^{(1)}) \| x_i x_i ^\top v\|_{\omega_1}^{*}  }{\sqrt{v^\top \nabla L_1^2 (\omega_1) v}} 
+  %
+  \leq \sup_{v \neq 0} \frac{1}{n} \frac{\sum_{i=1}^{n} | d(z_i ^{(2)}) - d(z_i ^{(1)})| \|x_i x_i ^\top v\|_{\omega_1}^{*}  }{\sqrt{v^\top \nabla L_1^2 (\omega_1) v}}\\
+  %
+  &= \sup_{v \neq 0} \frac{1}{n} \frac{\sum_{i=1}^{n} | d(z_i ^{(2)}) - d(z_i ^{(1)})| \|x_i \|_{\omega_1}^{*} |x_i ^\top v|  }{\sqrt{v^\top \nabla L_1^2 (\omega_1) v}}
+  %
+  =\frac{1}{n} \sum_{i=1}^{n} | d(z_i ^{(2)}) - d(z_i ^{(1)})| \|x_i \|_{\omega_1}^{*} \underbrace{\sup_{v \neq 0} \frac{ |x_i ^\top v|  }{\sqrt{v^\top \nabla L_1^2 (\omega_1) v}}}_{=\| x_i\|_{\omega_1} by \ \ 2)}\\
+  %
+  &=  \frac{1}{n} \sum_{i=1}^{n} \underbrace{| d(z_i ^{(2)}) - d(z_i ^{(1)})|}_{3)} \|x_i \|_{\omega_1}^{*}  \| x_i\|_{\omega_1}
+  %
+  \leq \frac{1}{n} \|x_i\|_{\omega _1}^* \|\omega_2-\omega_1\|_{\omega_1} \|x_i\|_{\omega _1}^* \| x_i\|_{\omega_1}\\
+  %
+  &= \underbrace{\frac{1}{n} \| x_i\|_{\omega_1} (\|x_i\|_{\omega _1}^*)^2}_{=:L_{semi}} \|\omega_2-\omega_1\|_{\omega_1} 
+\end{align*}
+
+
+1) H is symmetric and pd (invertible) and the spectral theorem admits $H^{\pm\frac{1}{2}} = Q \Lambda ^{\pm\frac{1}{2}} Q^\top$, where $H^{\pm\frac{1}{2}}$ is also clearly symmetric.
+
+2) Further notice, that 
+$ \sup_{u\neq 0} \frac{a^\top u}{u} = \sup_{\|u\|=1} a^\top u= \|a\|_2$ and define $u:= H ^{\frac{1}{2}}v$. Then
+\begin{align*}
+  \sup_{v\neq 0} \frac{x_i^\top v}{\sqrt{v^\top Hv }}
+  %
+  &=\sup_{v\neq 0} \frac{x_i^\top H ^{-\frac{1}{2}} H ^{\frac{1}{2}}v}{\sqrt{v^\top Hv }}
+  %
+  =\sup_{u\neq 0} \frac{x_i^\top H^{-\frac{1}{2}}u}{\sqrt{u ^\top u}}
+  %
+  = \sup_{u\neq 0} \frac{x_i^\top H^{-\frac{1}{2} \top} u}{\sqrt{u ^\top u}}%
+  = \sup_{u\neq 0} \frac{x_i^\top H^{-\frac{1}{2}} u}{\sqrt{u ^\top u}}
+  %
+  = \sup _{u\neq 0} \frac{x_i^\top H^{-\frac{1}{2} \top} u}{\sqrt{u ^\top u}}\\
+  &= \sup_{u\neq 0} \frac{(H^{-\frac{1}{2}} - x_i)^ \top u}{\|u\|}
+  %
+  = \sup _{\|u\|=1} (H^{-\frac{1}{2}} - x_i)^\top u
+  = \|H^{-\frac{1}{2}} x_i\|_2 
+  = \sqrt{x_i ^\top H^{-\frac{1}{2}\top} H^{-\frac{1}{2}} x_i}\\
+  &= \sqrt{x_i^\top H^{-1}x_i} 
+  = \sqrt{x_i^\top \nabla^2 L_1 (\omega_1) ^{-1}x_i}  = \|x_i\|_{w_1}
+\end{align*}
+
+3)
+As we already showed in subsection 2.8 one can bound the above term which yields
+\begin{align*}
+  | d(z_i ^{(2)}) - d(z_i ^{(1)})| &\leq \frac{1}{4} \| x_i (\omega_2 - \omega_1)\| 
+  %
+  \overbrace{=}^{1)} | (H ^ {-\frac{1}{2}}x_i) ^\top H^{\frac{1}{2}}(\omega_2 - \omega_1)|
+  %
+  \overbrace{\leq}^{CS} \| H^{-\frac{1}{2}} x_i\|_{2} \| H^{\frac{1}{2}}(\omega_2 - \omega_1)\|_{2}\\
+  %
+  &= \sqrt{x_i^\top \underbrace{H^{-\frac{1}{2} \top}H^{-\frac{1}{2}}}_{=H^{-1}}x_i} \sqrt{(\omega_2 - \omega_1)^\top \underbrace{H^{\frac{1}{2}\top}H^{\frac{1}{2}}}_{=H}(\omega_2 - \omega_1)} 
+  %
+  \overbrace{=}^{1)} \|x_i\|_{\omega _1}^* \|\omega_2-\omega_1\|_{\omega_1}
+\end{align*}
+
+\subsection{Coercivity and bounded level sets}
+Since it holds f coercive $\Longleftrightarrow$ f has bounded level sets we will examine the coercivity of the two loss functions to derive some insight into the boundedness of their level sets. A function $f : \mathbb{R}^d \to \mathbb{R}$ is coercive if $\omega \| \to \infty \quad \implies \quad f(\omega) \to \infty. $\\
+Computing the limit of both loss functions it is easy to verify, that $L_1$ is not coercive and thus does not have bounded level sets, while $L_2$ is coercive (and thus has bounded level sets).
+
+\subsection*{Algorithms}
+In this section we will list the different algorithms assumptions listed in the papers and their local and (if existent) global convergence guarantees. For the exact description of the algorithms we refer to the papers or our implementation. The runtime for Newton-type methods is generally cubic, as it is upper bounded in complexity in computing the inverse of the Hessian in each step.
 \subsection{Classic Newton's Method}
-
 The classical origin of Newton's method is as an algorithm for finding the roots of functions. In this paper it is used to find the roots $x^{*}$ of $\nabla (f(x)) \hspace{0.1cm} s.t.\nabla(f(x^{*})) = 0$ and $x^{*}$ a local minimum of $f$. Newton's method combined with a stepsize $\eta$ uses the update rule \cite{wright}:
 \begin{equation}
-  \mathbf{x}_{k+1} = \mathbf{x}_k - \eta (\nabla^2 f(\mathbf{x}_k))^{-1} \nabla f(\mathbf{x}_k)
+  x_{k+1} = x_k - (\nabla^2 f(x_k))^{-1} \nabla f(x_k)
 \end{equation}
-
-The inverse Hessian can be interpreted as transforming the gradient landscape to be more isotropic, thereby improving the conditioning of the problem. 
-\subsection{Cubic Newton}
-AICN gibt sich zwar als regularized method aus, kann in Wirklichkeit aber nicht umgehen die Matrix trotzdem zur Berechnung des Faktors Alpha invertieren zu müssen. Es kämpft deshalb für singulare oder illcondiitoned matrizen mit genau denselben problemen, wie unregularisierte Methoden. Kann man das sicher nicht umgehen, dass man für das Alpha das Skalarprodukt invertieren muss
-\subsection{Cubic Newton}
-
-The cubic Newton method was one of the first to achieve a good complexity guarantee globally [REFERENCE TO DO: What convergence rate exactly?]. It is based on cubic regularization and uses the update rule:
-
+Local convergence: If the objective function $f$ is twice differentiable and the Hessian is Lipschitz continuous, then $x_k$ is guaranteed to converge quadratically to a minimizer $x^*$ if it is in its neighborhoood [\cite{wright} p. 44].\\
+Global convergence: Classic Newton's method does not have global convergence guarantees.\\
+The inverse Hessian can be interpreted as transforming the gradient landscape to be more isotropic, thereby improving the conditioning of the problem. As mentioned before it is highly susceptible to fail on problems with ill conditioned Hessians.
+\subsection{Affine-invariant cubic Newton}
+The affine-invariant cubic newton is defined through the update step
 \begin{equation}
-\mathbf{x}_{k+1} = \mathbf{x}_{k} - ( \nabla^2 f(\mathbf{x}_k) + H ||\mathbf{x}_{k+1} - \mathbf{x}_{k}||\mathbf{I})^{-1} \nabla f(\mathbf{x}_k)
+  x_{k+1} = x_k - \alpha_k (\nabla^2 f(x_k))^{-1} \nabla f(x_k)
 \end{equation}
-
-\subsection{Levenberg and Marquardt method}
-
-The Levenberg-Marquardt's algorithm [REFERENCE] is an early form of regularized Newton's method that modifies the Hessian. For ill conditioned (or singular) H regularization can increase the conergence (or make the problem solvable as $H + \lambda I$ is always invertible for sufficiently large $eig(H)> - \lambda, \lambda > 0$). The update rule is:
-\begin{equation}
-\mathbf{x}_{k+1} = \mathbf{x}_{k} - ( \nabla^2 f(\mathbf{x}_k) + \lambda_k \mathbf{I})^{-1} \nabla f(\mathbf{x}_k)
-\end{equation}
+where $\alpha_k$ is a closed form regularization step \cite{hanzely2022damped}. 
+Although AICN is theoretically regularized, it is practically impossible to make direct use of this regularization, as the computation of $\alpha_k$ requires inverting a potentially ill conditioned (or even singular) Hessian.\\
+Global Convergence:  For global convergence \cite{hanzely2022damped} requires that f is a $L_{semi}$-sssc convex function with pd Hessian, constant $L_{est}>L_{semi}$ and bounded level sets. Then AICN guarantees a global convergence rate of $\mathcal{O}(\frac{1}{k^2})$. For insights into which combinations of loss function and data sets satsify this condition we we refer the reader to section 2.\\
+Local Convergence: If we are in a sufficiently close \cite{hanzely2022damped} neighborhood of the solution $x^*$ and $L_{est}>L_{semi}$ of $L_{semi}-sssc$ $f$ as before, then the convergence is quadratic.\\ 
+Theoretically it would be possible to compute $L_{semi}$ in every iteration of AICN for L1 on \texttt{ijcnn1} by just computing the factor $L_{semi}$ provided in the inequality of section 2.9 of this work. This would derive the optimal convergence guarantees for the AICN, but we found it practically more interesting to explore what happens for a conservative fixed constant and refer to our code.
+\subsection{Regularized Cubic Newton}
+Traditionally regularized cubic newton is designed for non-convex optimization problems as solving the cubic subproblem in every step of the iteration makes it more robust against plateaus and flat regions. Overshoot happens less often and it is less likely to get stuck in saddle like sections of the function. In every iteration of the algorithm it solves the cubic subproblem
+\[
+m_k(s) = f(x_k) + g_k^\top s + \frac{1}{2} s^\top B_k s + \frac{\sigma_k}{3} \|s\|^3
+\]
+where \( g_k = \nabla f(x_k) \), \( B_k \approx \nabla^2 f(x_k) \), and \( \sigma_k > 0 \) is the regularisation parameter \cite{cartis}. The implemented version in the paper is an adaptive method using trust regions and cauchy point method. For details we refer to \cite{cartis}\\
+Global Convergence: Let the termination criterion be set to  $\|\nabla f(x_k)\|\leq \epsilon$ for some $\epsilon > 0$ and assume, that the objective function is continuously differentiable with $L$-Lipschitz continuous Hessian (i.e. $f$ $L$-Smooth) and that we can ensure a uniform bound on the Hessian approximation $B_k$ of the subproblem. Then the runtime is upper bounded by $\mathcal{O}(\epsilon ^{-\frac{3}{2}})$. A local convergence condition is not discussed.
 
 \subsection{Regularized Newton}
 
@@ -160,8 +311,98 @@ In their 2023 article Michenko presents a variation of Newton's method that uses
 \end{equation}
 
 where $H > 0$ is a constant. The convergence rate of this algorithm is $\mathcal{O}(\frac{1}{k^2})$. This method uses an adaptive variant of the Levenberg-Marquardt regularization. 
+\newpage
+\section{Results}
+\begin{table}[ht]
+  \centering
+  \caption{Run time and test accuracy for each algorithm on each dataset and loss type}
+  \label{tab:results}
+  \begin{tabular}{lllr@{}r}
+    \toprule
+    Dataset & Loss Type & Method & \multicolumn{1}{l}{Mean Execution Time (s)} & \multicolumn{1}{l}{Mean Test Accuracy} \\
+    \midrule
+    \multirow{12}{*}{a9a} 
+      & \multirow{6}{*}{Binary CE Loss}
+        & Gradient Descent & 0.76568969 & 0.78 \\
+        & & Classic Newton & failed & failed \\
+        & & Adaptive Newton & 1.93920263 & 0.84 \\
+        & & Adaptive Newton+ & 1.886729 & 0.84 \\
+        & & Globally Convergent Newton & 1.22799778 & 0.85 \\
+        & & Cubic Regularized Newton & 1.38458006 & 0.84 \\
+      & \multirow{6}{*}{Non-convex CE Loss}
+        & Gradient Descent & 0.7895395 & 0.78 \\
+        & & Classic Newton & 1.30171601 & 0.85 \\
+        & & Adaptive Newton & failed & failed \\
+        & & Adaptive Newton+ & 2.03450656 & 0.82 \\
+        & & Globally Convergent Newton & 1.27804756 & 0.85 \\
+        & & Cubic Regularized Newton & 1.48027492 & 0.84 \\
+    \midrule
+    \multirow{12}{*}{ijcnn1}
+      & \multirow{6}{*}{Binary CE Loss}
+        & Gradient Descent & 0.11042674 & 0.88 \\
+        & & Classic Newton & 0.18028998 & 0.92 \\
+        & & Adaptive Newton & 0.27533038 & 0.92 \\
+        & & Adaptive Newton+ & 0.31017598 & 0.92 \\
+        & & Globally Convergent Newton & 0.1776003 & 0.90 \\
+        & & Cubic Regularized Newton & 0.21398926 & 0.90 \\
+      & \multirow{6}{*}{Non-convex CE Loss}
+        & Gradient Descent & 0.11616317 & 0.90 \\
+        & & Classic Newton & failed & failed \\
+        & & Adaptive Newton & 0.26090709 & 0.92 \\
+        & & Adaptive Newton+ & 0.2853574 & 0.92 \\
+        & & Globally Convergent Newton & 0.17406511 & 0.90 \\
+        & & Cubic Regularized Newton & 0.20171062 & 0.90 \\
+    \midrule
+    \multirow{8}{*}{covtype}
+      & \multirow{4}{*}{Binary CE Loss}
+        & Adaptive Newton & 20.22513978 & 0.75 \\
+        & & Adaptive Newton+ & 20.77353032 & 0.75 \\
+        & & Global Regularized Newton & 12.83550604 & 0.74 \\
+        & & Cubic Regularized Newton & 14.80531335 & 0.69 \\
+      & \multirow{4}{*}{Non-convex CE Loss}
+        & Adaptive Newton & 31.30845594 & 0.75 \\
+        & & Adaptive Newton+ & 21.32005628 & 0.75 \\
+        & & Global Regularized Newton & 13.47647985 & 0.74 \\
+        & & Cubic Regularized Newton & 14.6580193 & 0.69 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+\begin{table}[ht]
+  \centering
+  \caption{Average execution time to reach convergence criterion for different methods. (Gradient Descent failed)}
+  \label{tab:avg_runtime}
+  \begin{tabular}{lccccc}
+    \toprule
+    Global Regularized Newton & Adaptive Newton & Adaptive Newton+ & Cubic Regularized Newton & Classic Newton \\
+    \midrule
+    2.26345611 & 0.35479093 & 0.25507712 & 8.79509473 & 0.11621308 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
-\subsection{Appendix}
+\begin{figure}
+    \centering
+    \caption{A9A Dataset}
+    \includegraphics[width=.8\linewidth]{figures/A9A-CE.png}
+    \includegraphics[width=.8\linewidth]{figures/A9A-NCCE.png}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \caption{COVTYPE Dataset}
+    \includegraphics[width=.8\linewidth]{figures/COVTYPE-CE.png}
+    \includegraphics[width=.8\linewidth]{figures/COVTYPE-NCCE.png}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \caption{IJCNN1 Dataset}
+    \includegraphics[width=.8\linewidth]{figures/IJCNN1-CE.png}
+    \includegraphics[width=.8\linewidth]{figures/IJCNN1-NCCE.png}
+    \includegraphics[width=.8\linewidth]{figures/IJCNN1-NCCE-conv.png}
+\end{figure}
+\newpage
+\section{Appendix}
 Remark 2:
 \begin{align*}
   \sigma(z) &= \frac{1}{1 + e^{-z}} \\
@@ -317,97 +558,8 @@ Combining the steps we derive the Hessian
 D_{ii} &= \sigma(-y_i x_i^\top \omega) \big(1 - \sigma(-y_i x_i^\top \omega)\big)
 \end{align*}
 
-
-
-\subsection{Inexact Newton Method}
-Given that Newton has cubic complexity we now outline how we aim to reduce the runtime by extending CG and MINRES methods to the Newton-type methods described in our paper. In order for the modified algorithms to inherit the convergence guarantees of the algorithms we want to approximate $p$ s.t.
-$$ \| H p + \nabla f \| \leq \epsilon \hspace{0.2cm} \text{(absolute tolerance)} < \epsilon = 10^{-8} $$
-Since $H_{1,2} = \nabla ^2 L_{1,2}$ are clearly symmetric (as both $X^\top D X$ and $\nabla ^2 r(x)$ are) we can apply the conjugate gradient method 
-if the H is positive definite or have to fall back on MINRES if it is not pd. Positive definiteness depends on the data matrix and the regularizer curvature.
-[TODO: runtime for MINRES and CG]\\
-Every iteration of Vanilla Newton takes O($n^3$) per iteration because inversion of the Hessian costs O($n^3$).\\
-for symmetric applying CG to newton drops the effort for conversion down to 
-$$O(k\cdot n^2) = O(\sqrt{\kappa}\log \left( 1/\epsilon\right) \cdot n^2)$$ where $\kappa(H) = \frac{\lambda_{max}(H)}{\lambda_{max}(H)}$\\
-Precondition with SSOR to reduce condition number.
 \bibliographystyle{unsrt}
 \bibliography{refs}
-
-\subsection{Experiments Setup}
-All algorithms were implemented in Python 3.13.0 using the NumPy and SciPy libraries. Experiments were conducted on a machine equipped with an Apple M4 Pro processor running the Sequoia 15.5 operating system. Visualizations and plots were generated using a Jupyter Notebook named global-convergence.py.
-
-The source code can be found on github (https://github.com/ben133290/global-convergence-newton).
-
-
-\subsection{PLOTS AND STUFF (please copy and paste to final locaton in report)}
-
-\begin{table}[ht]
-  \centering
-  \caption{Run time and test accuracy for each algorithm on each dataset and loss type}
-  \label{tab:results}
-  \begin{tabular}{lllrrl}
-    \toprule
-    Dataset & Loss Type & Method & Mean Execution Time (s) & Mean Test Accuracy & \\
-    \midrule
-    \multirow{a9a} 
-      & \multirow{Binary CE Loss}
-        & Gradient Descent               & 0.76568969 & 0.78 & \\
-        &                                & Classic Newton                & failed  & failed & \\
-        &                                & Adaptive Newton              & 1.93920263 & 0.84 & \\
-        &                                & Adaptive Newton+            & 1.886729 & 0.84 & \\
-        &                                & Globally Convergent Newton & 1.22799778 & 0.85 & \\
-        &                                & Cubic Regularized Newton    & 1.38458006 & 0.84 & \\
-      & \multirow{Non-convex CE Loss}
-        & Gradient Descent               & 0.7895395& 0.78 & \\
-        &                                & Classic Newton                & 1.30171601 & 0.85 & \\
-        &                                & Adaptive Newton              & failed & failed & \\
-        &                                & Adaptive Newton+            & 2.03450656 & 0.82 & \\
-        &                                & Globally Convergent Newton & 1.27804756 & 0.85 & \\
-        &                                & Cubic Regularized Newton    & 1.48027492 & 0.84 & \\
-    \midrule
-    \multirow{ijcnn1} 
-      & \multirow{Binary CE Loss}
-        & Gradient Descent               & 0.11042674 & 0.88 & \\
-        &                                & Classic Newton                &  0.18028998 & 0.92 & \\
-        &                                & Adaptive Newton              & 0.27533038 & 0.92 & \\
-        &                                & Adaptive Newton+            & 0.31017598 & 0.92 & \\
-        &                                & Globally Convergent Newton & 0.1776003 & 0.90 & \\
-        &                                & Cubic Regularized Newton    & 0.21398926 & 0.90 & \\
-      & \multirow{Non-convex CE Loss}
-        & Gradient Descent               & 0.11616317 & 0.90 & \\
-        &                                & Classic Newton                & failed  & failed & \\
-        &                                & Adaptive Newton              & 0.26090709 & 0.92 & \\
-        &                                & Adaptive Newton+            & 0.2853574 & 0.92 & \\
-        &                                & Globally Convergent Newton & 0.17406511 & 0.90 & \\
-        &                                & Cubic Regularized Newton    & 0.20171062 & 0.90 & \\
-    \midrule
-    \multirow{covtype} 
-      & \multirow{Binary CE Loss}
-                                         & Adaptive Newton              & 20.22513978 & 0.75 & \\ 
-        &                                & Adaptive Newton+            & 20.77353032 & 0.75 & \\
-        &                                & Global Regularized Newton & 12.83550604 & 0.74 & \\
-        &                                & Cubic Regularized Newton    & 14.80531335  & 0.69 & \\
-      & \multirow{Non-convex CE Loss}
-                                         & Adaptive Newton              & 31.30845594 & 0.75 & \\   
-        &                                & Adaptive Newton+            & 21.32005628 & 0.75 & \\
-        &                                & Global Regularized Newton & 13.47647985 & 0.74 & \\
-        &                                & Cubic Regularized Newton    & 14.6580193 & 0.69 & \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\begin{table}
-  \caption{Average execution time to reach convergence criterion for different methods. (Gradient Descent failed)}\label{tab:conv-res}
-  \begin{center}
-    \begin{tabular}[c]{rrrrrr}
-      \hline
-      Global Regularized Newton & Adaptive Newton & Adaptive Newton+ & Cubic Regularized Newton & Classic Newton \\
-      \hline
-      2.26345611 & 0.35479093 & 0.25507712 & 8.79509473 & 0.11621308 \\
-      \hline
-    \end{tabular}
-  \end{center}
-\end{table}
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section*{Checklist}
